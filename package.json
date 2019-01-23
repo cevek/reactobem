@@ -1,0 +1,38 @@
+{
+    "name": "reactobem",
+    "version": "1.0.2",
+    "description": "Add to your react components BEM classnames",
+    "main": "dist/index.js",
+    "scripts": {
+        "test": "npx ttsc && node dist/tests/test"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/cevek/reactobem.git"
+    },
+    "files": [
+        "dist/index.js",
+        "dist/tags.js"
+    ],
+    "keywords": [
+        "react",
+        "bem",
+        "typescript",
+        "transformer"
+    ],
+    "author": "cevek",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/cevek/reactobem/issues"
+    },
+    "homepage": "https://github.com/cevek/reactobem#readme",
+    "dependencies": {
+        "@types/node": ">8.0.0",
+        "@types/react": ">15.0.0",
+        "typescript": ">3.0.0"
+    },
+    "devDependencies": {
+        "react": "^16.7.0",
+        "ttypescript": "^1.5.6"
+    }
+}
