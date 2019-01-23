@@ -1,6 +1,6 @@
 {
     "name": "reactobem",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Add to your react components BEM classnames",
     "main": "dist/index.js",
     "scripts": {
