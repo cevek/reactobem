@@ -1,5 +1,6 @@
 import React = require('react');
 import './Foo';
+import './src';
 import { assert } from './utils';
 
 export const x = 1;
@@ -39,13 +40,14 @@ assert(
     (() => <ns.Bar className={xx} />).toString(),
     '() => React.createElement(ns.Bar, { className: "test__Bar" + (" " + xx) })'
 );
-assert((() => <h1 as="div" />).toString(), '() => React.createElement("div", { className: "test__h1" })');
-assert((() => <img />).toString(), '() => React.createElement("img", { className: "test__img" })');
-assert(
-    (() => <div className="foo-bar" />).toString(),
-    '() => React.createElement("div", { className: "test__div" + " " + "foo-bar" })'
-);
-assert((() => <span />).toString(), '() => React.createElement("span", { className: "test__span" })');
+assert((() => <h1 />).toString(), '() => React.createElement("h1", null)');
+assert((() => <img />).toString(), '() => React.createElement("img", null)');
+assert((() => <a>foo</a>).toString(), '() => React.createElement("a", null, "foo")');
+assert((() => <span />).toString(), '() => React.createElement("span", null)');
+assert((() => <img className="foo" />).toString(), '() => React.createElement("img", { className: "foo" })');
+assert((() => <img mod-foo="bar" />).toString(), '() => React.createElement("img", null)');
+
+assert((() => <div className="foo-bar" />).toString(), '() => React.createElement("div", { className: "foo-bar" })');
 assert(
     (() => (
         <foo>
@@ -91,6 +93,19 @@ assert(
 );
 assert(
     (() =>
+        function Foo() {
+            return (
+                <div>
+                    <span className="hey">bar</span>
+                </div>
+            );
+        }).toString(),
+    `() => function Foo() {
+        return (React.createElement("div", null, React.createElement("span", { className: "hey" }, "bar")));
+    }`
+);
+assert(
+    (() =>
         class Bar {
             render() {
                 return <root>bar</root>;
@@ -119,3 +134,14 @@ assert(
         }
     }`
 );
+
+assert(
+    (() => {
+        const Foo = () => <root>bar</root>;
+    }).toString(),
+    `() => {
+        const Foo = () => React.createElement("div", { className: "test__Foo__root" }, "bar");
+    }`
+);
+
+console.log('All test passed');

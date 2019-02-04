@@ -1,6 +1,6 @@
 import * as ts from 'typescript';
 import { basename, extname, dirname } from 'path';
-import { htmlTags } from './tags';
+import { htmlTags, skipTags } from './tags';
 import { createHash } from 'crypto';
 
 function isComponent(tagName: ts.JsxTagNameExpression) {
@@ -30,56 +30,71 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
             if (sourceFile.isDeclarationFile) return sourceFile;
             const _baseName = basename(sourceFile.fileName, extname(sourceFile.fileName));
             const baseName = _baseName === 'index' ? basename(dirname(sourceFile.fileName)) : _baseName;
-            const baseNameWithSuffix = baseName + '__';
+            const baseNameWithSuffix = baseName === 'src' ? '' : baseName + '__';
 
-            function getElementName(fun: ComponentTypeNode, tag: ts.JsxTagNameExpression) {
-                const componentName = fun && fun.name ? fun.name.text + '__' : '';
+            function getElementName(funName: string | undefined, tag: ts.JsxTagNameExpression) {
+                const componentName = funName ? funName + '__' : '';
                 // console.log(fun && fun.name.text);
-                return (
-                    componentName +
-                    (ts.isIdentifier(tag) ? tag.text : ts.isPropertyAccessExpression(tag) ? tag.name.text : 'this')
-                );
+                const tagName = ts.isIdentifier(tag)
+                    ? tag.text
+                    : ts.isPropertyAccessExpression(tag)
+                    ? tag.name.text
+                    : 'this';
+                return {
+                    tagName: tagName,
+                    elementClassName: hash(baseNameWithSuffix + componentName + tagName),
+                };
             }
 
-            function getUpdatedAttrs(tagName: string, attrs: ts.JsxAttributes) {
-                let expr: ts.Expression = ts.createLiteral(hash(baseNameWithSuffix + tagName));
-                let htmlTagName = htmlTags.indexOf(tagName) === -1 ? 'div' : tagName;
+            function getUpdatedAttrs(tagName: string, elementClassName: string, attrs: ts.JsxAttributes) {
+                // console.log('tagName', tagName);
+                const hasNoBase = skipTags.includes(tagName);
+                let expr: ts.Expression | undefined = hasNoBase ? undefined : ts.createLiteral(elementClassName);
+                let htmlTagName = htmlTags.includes(tagName) ? tagName : 'div';
                 const newAttrs: ts.JsxAttributeLike[] = [];
                 let classNameIdx = -1;
                 for (let i = 0; i < attrs.properties.length; i++) {
                     const prop = attrs.properties[i];
                     if (ts.isJsxAttribute(prop) && ts.isIdentifier(prop.name)) {
                         if (prop.name.text === 'className' || prop.name.text === 'class') {
-                            expr = ts.createBinary(
-                                expr,
-                                ts.SyntaxKind.PlusToken,
-                                ts.createBinary(
-                                    ts.createLiteral(' '),
-                                    ts.SyntaxKind.PlusToken,
-                                    (prop.initializer && ts.isJsxExpression(prop.initializer)
-                                        ? prop.initializer.expression!
-                                        : prop.initializer) || ts.createLiteral('')
-                                )
-                            );
+                            const init =
+                                (prop.initializer && ts.isJsxExpression(prop.initializer)
+                                    ? prop.initializer.expression!
+                                    : prop.initializer) || ts.createLiteral('');
+
+                            expr = expr
+                                ? ts.createBinary(
+                                      expr,
+                                      ts.SyntaxKind.PlusToken,
+                                      ts.createBinary(ts.createLiteral(' '), ts.SyntaxKind.PlusToken, init)
+                                  )
+                                : init;
+
                             classNameIdx = newAttrs.length;
                             newAttrs.push(undefined!);
                             continue;
                         }
                         if (prop.name.text.match(/^mod-/)) {
-                            let value: ts.Expression = ts.createLiteral(
-                                ' ' + hash(baseNameWithSuffix + tagName + '--' + prop.name.text.substr(4))
-                            );
-                            if (prop.initializer) {
-                                const initializer = prop.initializer;
-                                value = ts.createConditional(
-                                    ts.isJsxExpression(initializer) ? initializer.expression! : initializer,
-                                    ts.createToken(ts.SyntaxKind.QuestionToken),
-                                    value,
-                                    ts.createToken(ts.SyntaxKind.ColonToken),
-                                    ts.createLiteral('')
+                            if (hasNoBase) {
+                                console.error(
+                                    `<${tagName}> has ${prop.getText()} but ${tagName} is not valid element name`
                                 );
+                            } else {
+                                let value: ts.Expression = ts.createLiteral(
+                                    ' ' + hash(baseNameWithSuffix + tagName + '--' + prop.name.text.substr(4))
+                                );
+                                if (prop.initializer) {
+                                    const initializer = prop.initializer;
+                                    value = ts.createConditional(
+                                        ts.isJsxExpression(initializer) ? initializer.expression! : initializer,
+                                        ts.createToken(ts.SyntaxKind.QuestionToken),
+                                        value,
+                                        ts.createToken(ts.SyntaxKind.ColonToken),
+                                        ts.createLiteral('')
+                                    );
+                                }
+                                expr = expr ? ts.createBinary(expr, ts.SyntaxKind.PlusToken, value) : value;
                             }
-                            expr = ts.createBinary(expr, ts.SyntaxKind.PlusToken, value);
                             continue;
                         }
                         if (prop.name.text === 'as') {
@@ -91,40 +106,42 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                     }
                     newAttrs.push(visitor(prop) as ts.JsxAttributeLike);
                 }
-                const classNameAttr = ts.createJsxAttribute(
-                    ts.createIdentifier('className'),
-                    ts.createJsxExpression(undefined, expr)
-                );
-                if (classNameIdx === -1) {
-                    newAttrs.unshift(classNameAttr);
-                } else {
-                    newAttrs[classNameIdx] = classNameAttr;
+                const classNameAttr = expr
+                    ? ts.createJsxAttribute(ts.createIdentifier('className'), ts.createJsxExpression(undefined, expr))
+                    : undefined;
+                if (classNameAttr) {
+                    if (classNameIdx === -1) {
+                        newAttrs.unshift(classNameAttr);
+                    } else {
+                        newAttrs[classNameIdx] = classNameAttr;
+                    }
                 }
                 return { newAttrs, htmlTagName };
             }
 
-            let fun: ComponentTypeNode;
+            let funName: string | undefined;
             function visitor(node: ts.Node): ts.Node {
                 if (
                     ts.isFunctionDeclaration(node) ||
                     ts.isFunctionExpression(node) ||
                     ts.isClassDeclaration(node) ||
-                    ts.isClassExpression(node)
+                    ts.isClassExpression(node) ||
+                    (ts.isVariableDeclaration(node) && node.initializer && ts.isArrowFunction(node.initializer))
                 ) {
-                    const prevFun = fun;
-                    fun = node;
+                    const prevFun = funName;
+                    funName = node.name && ts.isIdentifier(node.name) ? node.name.text : undefined;
                     const ret = ts.visitEachChild(node, visitor, ctx);
-                    fun = prevFun;
+                    funName = prevFun;
                     return ret;
                 }
                 if (ts.isJsxSelfClosingElement(node)) {
                     const isCmp = isComponent(node.tagName);
-                    const elementName = getElementName(fun, node.tagName);
-                    const { newAttrs, htmlTagName } = getUpdatedAttrs(elementName, node.attributes);
-                    const tagName = isCmp ? node.tagName : ts.createIdentifier(htmlTagName);
+                    const { tagName, elementClassName } = getElementName(funName, node.tagName);
+                    const { newAttrs, htmlTagName } = getUpdatedAttrs(tagName, elementClassName, node.attributes);
+                    const tagNameNode = isCmp ? node.tagName : ts.createIdentifier(htmlTagName);
                     return ts.updateJsxSelfClosingElement(
                         node,
-                        tagName,
+                        tagNameNode,
                         node.typeArguments,
                         ts.updateJsxAttributes(node.attributes, newAttrs)
                     );
@@ -132,19 +149,23 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                 if (ts.isJsxElement(node)) {
                     const openingElement = node.openingElement;
                     const isCmp = isComponent(openingElement.tagName);
-                    const elementName = getElementName(fun, openingElement.tagName);
-                    const { newAttrs, htmlTagName } = getUpdatedAttrs(elementName, openingElement.attributes);
-                    const tagName = isCmp ? openingElement.tagName : ts.createIdentifier(htmlTagName);
+                    const { tagName, elementClassName } = getElementName(funName, openingElement.tagName);
+                    const { newAttrs, htmlTagName } = getUpdatedAttrs(
+                        tagName,
+                        elementClassName,
+                        openingElement.attributes
+                    );
+                    const tagNameNode = isCmp ? openingElement.tagName : ts.createIdentifier(htmlTagName);
                     return ts.updateJsxElement(
                         node,
                         ts.updateJsxOpeningElement(
                             openingElement,
-                            tagName,
+                            tagNameNode,
                             openingElement.typeArguments,
                             ts.updateJsxAttributes(openingElement.attributes, newAttrs)
                         ),
                         ts.visitNodes(node.children, visitor),
-                        ts.updateJsxClosingElement(node.closingElement, tagName)
+                        ts.updateJsxClosingElement(node.closingElement, tagNameNode)
                     );
                 }
                 return ts.visitEachChild(node, visitor, ctx);
