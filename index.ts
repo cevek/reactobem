@@ -2,17 +2,8 @@ import * as ts from 'typescript';
 import { basename, extname, dirname } from 'path';
 import { htmlTags, skipTags } from './tags';
 import { createHash } from 'crypto';
+import { getModName, getElementName, isComponent } from './common';
 
-function isComponent(tagName: ts.JsxTagNameExpression) {
-    return !(ts.isIdentifier(tagName) && tagName.text[0] === tagName.text[0].toLowerCase());
-}
-
-type ComponentTypeNode =
-    | ts.FunctionDeclaration
-    | ts.FunctionExpression
-    | ts.ClassDeclaration
-    | ts.ClassExpression
-    | undefined;
 
 export default function(program: ts.Program, pluginOptions: { minify?: boolean }) {
     function hash(str: string) {
@@ -32,14 +23,10 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
             const baseName = _baseName === 'index' ? basename(dirname(sourceFile.fileName)) : _baseName;
             const baseNameWithSuffix = baseName === 'src' ? '' : baseName + '__';
 
-            function getElementName(funName: string | undefined, tag: ts.JsxTagNameExpression) {
+            function makeElementName(funName: string | undefined, tag: ts.JsxTagNameExpression) {
                 const componentName = funName ? funName + '__' : '';
                 // console.log(fun && fun.name.text);
-                const tagName = ts.isIdentifier(tag)
-                    ? tag.text
-                    : ts.isPropertyAccessExpression(tag)
-                    ? tag.name.text
-                    : 'this';
+                const tagName = getElementName(tag);
                 return {
                     tagName: tagName,
                     elementClassName: hash(baseNameWithSuffix + componentName + tagName),
@@ -66,7 +53,7 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                                 ? ts.createBinary(
                                       expr,
                                       ts.SyntaxKind.PlusToken,
-                                      ts.createBinary(ts.createLiteral(' '), ts.SyntaxKind.PlusToken, init)
+                                      ts.createBinary(ts.createLiteral(' '), ts.SyntaxKind.PlusToken, init),
                                   )
                                 : init;
 
@@ -74,14 +61,15 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                             newAttrs.push(undefined!);
                             continue;
                         }
-                        if (prop.name.text.match(/^mod-/)) {
+                        const modName = getModName(prop.name.text);
+                        if (modName) {
                             if (hasNoBase) {
                                 console.error(
-                                    `<${tagName}> has ${prop.getText()} but ${tagName} is not valid element name`
+                                    `<${tagName}> has ${prop.getText()} but ${tagName} is not valid element name`,
                                 );
                             } else {
                                 let value: ts.Expression = ts.createLiteral(
-                                    ' ' + hash(baseNameWithSuffix + tagName + '--' + prop.name.text.substr(4))
+                                    ' ' + hash(baseNameWithSuffix + tagName + '--' + modName),
                                 );
                                 if (prop.initializer) {
                                     const initializer = prop.initializer;
@@ -90,7 +78,7 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                                         ts.createToken(ts.SyntaxKind.QuestionToken),
                                         value,
                                         ts.createToken(ts.SyntaxKind.ColonToken),
-                                        ts.createLiteral('')
+                                        ts.createLiteral(''),
                                     );
                                 }
                                 expr = expr ? ts.createBinary(expr, ts.SyntaxKind.PlusToken, value) : value;
@@ -136,24 +124,24 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                 }
                 if (ts.isJsxSelfClosingElement(node)) {
                     const isCmp = isComponent(node.tagName);
-                    const { tagName, elementClassName } = getElementName(funName, node.tagName);
+                    const { tagName, elementClassName } = makeElementName(funName, node.tagName);
                     const { newAttrs, htmlTagName } = getUpdatedAttrs(tagName, elementClassName, node.attributes);
                     const tagNameNode = isCmp ? node.tagName : ts.createIdentifier(htmlTagName);
                     return ts.updateJsxSelfClosingElement(
                         node,
                         tagNameNode,
                         node.typeArguments,
-                        ts.updateJsxAttributes(node.attributes, newAttrs)
+                        ts.updateJsxAttributes(node.attributes, newAttrs),
                     );
                 }
                 if (ts.isJsxElement(node)) {
                     const openingElement = node.openingElement;
                     const isCmp = isComponent(openingElement.tagName);
-                    const { tagName, elementClassName } = getElementName(funName, openingElement.tagName);
+                    const { tagName, elementClassName } = makeElementName(funName, openingElement.tagName);
                     const { newAttrs, htmlTagName } = getUpdatedAttrs(
                         tagName,
                         elementClassName,
-                        openingElement.attributes
+                        openingElement.attributes,
                     );
                     const tagNameNode = isCmp ? openingElement.tagName : ts.createIdentifier(htmlTagName);
                     return ts.updateJsxElement(
@@ -162,10 +150,10 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                             openingElement,
                             tagNameNode,
                             openingElement.typeArguments,
-                            ts.updateJsxAttributes(openingElement.attributes, newAttrs)
+                            ts.updateJsxAttributes(openingElement.attributes, newAttrs),
                         ),
                         ts.visitNodes(node.children, visitor),
-                        ts.updateJsxClosingElement(node.closingElement, tagNameNode)
+                        ts.updateJsxClosingElement(node.closingElement, tagNameNode),
                     );
                 }
                 return ts.visitEachChild(node, visitor, ctx);

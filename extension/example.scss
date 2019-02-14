@@ -1,0 +1,23 @@
+.Foo {
+    &__X {
+        &_y {
+            &-z {
+                color: blue;
+            }
+        }    
+    }
+    &_bar {
+        &-red {
+            color: red;
+        }
+        &-blue {
+            color: blue;
+        }
+        &-white, &-black {
+            color: white;
+        } 
+    }
+    &_yellow, &_green {
+        color: yellow;
+    }
+}
