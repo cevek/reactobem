@@ -1,38 +1,47 @@
 import * as ts from 'typescript';
-import { isComponent, getElementName, getModName } from '../common';
-import { Component, Element, Mod } from './types';
+import {isComponent, getElementName, getModName} from '../common';
+import {Component, Element, Mod} from './types';
+import {readFileSync} from 'fs';
+import {inspect} from 'util';
 
+export function extract(fileName: string) {
+    const sourceFile = ts.createSourceFile(fileName, readFileSync(fileName, 'utf8'), ts.ScriptTarget.ESNext);
+    return extractor(sourceFile);
+}
 
-export function extractor(sourceFile: ts.SourceFile) {
+const res = extract('./example.tsx');
+console.log(inspect(res, {depth: 10}));
+
+function extractor(sourceFile: ts.SourceFile) {
     const components: Component[] = [];
-    let currentComponent: Component;
+    let currentComponent: Component | undefined;
 
     function rootVisitor(node: ts.Node): void {
-        if (
-            ts.isFunctionDeclaration(node) ||
-            ts.isFunctionExpression(node) ||
-            ts.isClassDeclaration(node) ||
-            ts.isClassExpression(node) ||
-            (ts.isVariableDeclaration(node) && node.initializer && ts.isArrowFunction(node.initializer))
-        ) {
+        let componentName;
+        if (ts.isVariableStatement(node)) {
+            const varDecl = node.declarationList.declarations[0];
+            componentName = ts.isIdentifier(varDecl.name) ? varDecl.name.text : undefined;
+        }
+        if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) {
+            componentName = node.name && ts.isIdentifier(node.name) ? node.name.text : undefined;
+        }
+        if (componentName) {
             const prevComponent = currentComponent;
-            const funName = node.name && ts.isIdentifier(node.name) ? node.name.text : undefined;
-            if (funName) {
-                currentComponent = {
-                    name: funName,
-                    elements: [],
-                    pos: node.pos,
-                };
-                components.push(currentComponent);
-                ts.forEachChild(node, visitor);
-            }
+            currentComponent = {
+                name: componentName,
+                elements: [],
+                pos: node.pos,
+            };
+            components.push(currentComponent);
+            ts.forEachChild(node, visitor);
             currentComponent = prevComponent;
         }
+
         return ts.forEachChild(node, visitor);
     }
 
     function createElement(jsxElement: ts.JsxOpeningElement | ts.JsxSelfClosingElement) {
-        if (!isComponent(jsxElement.tagName)) {
+        if (currentComponent && !isComponent(jsxElement.tagName)) {
             const element: Element = {
                 name: getElementName(jsxElement.tagName),
                 mods: getMods(jsxElement.attributes),
@@ -69,5 +78,6 @@ export function extractor(sourceFile: ts.SourceFile) {
         }
         return mods;
     }
-    return ts.forEachChild(sourceFile, rootVisitor);
+    ts.forEachChild(sourceFile, rootVisitor);
+    return components;
 }
