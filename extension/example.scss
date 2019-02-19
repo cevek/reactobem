@@ -4,7 +4,15 @@
             &-z {
                 color: blue;
             }
-        }    
+        }
+    }
+    &__A,
+    &__B {
+        &_ab {
+            &-abm {
+                color: red;
+            }
+        }
     }
     &_bar {
         &-red {
@@ -13,11 +21,13 @@
         &-blue {
             color: blue;
         }
-        &-white, &-black {
+        &-white,
+        &-black {
             color: white;
-        } 
+        }
     }
-    &_yellow, &_green {
+    &_yellow,
+    &_green {
         color: yellow;
     }
 }

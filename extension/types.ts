@@ -14,4 +14,5 @@ export interface Element {
 export interface Mod {
     name: string;
     pos: number;
+    
 }
