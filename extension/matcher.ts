@@ -50,12 +50,12 @@ export function match(sourceComponents: Component[], destComponents: Component[]
                 if (idx - i >= 0) {
                     const el = component.elements[idx - i];
                     const destEl = elementsWeakMap.get(el);
-                    if (destEl) return destEl;
+                    if (destEl) return {upperElement: destEl};
                 }
                 if (idx + i < component.elements.length) {
                     const el = component.elements[idx + i];
                     const destEl = elementsWeakMap.get(el);
-                    if (destEl) return destEl;
+                    if (destEl) return {lowerElement: destEl};
                 }
             }
         }

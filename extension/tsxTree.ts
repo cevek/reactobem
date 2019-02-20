@@ -31,6 +31,7 @@ function extractor(sourceFile: ts.SourceFile) {
                 name: componentName,
                 elements: [],
                 pos: node.pos,
+                end: node.end,
             };
             components.push(currentComponent);
             ts.forEachChild(node, visitor);
@@ -45,7 +46,8 @@ function extractor(sourceFile: ts.SourceFile) {
             const element: Element = {
                 name: getElementName(jsxElement.tagName),
                 mods: getMods(jsxElement.attributes),
-                pos: jsxElement.tagName.pos,
+                pos: jsxElement.pos,
+                end: jsxElement.end,
             };
             currentComponent.elements.push(element);
         }
@@ -70,7 +72,8 @@ function extractor(sourceFile: ts.SourceFile) {
                 if (modName) {
                     mods.push({
                         name: modName,
-                        pos: prop.name.pos,
+                        pos: prop.pos,
+                        end: prop.end,
                     });
                 }
             }

@@ -1,12 +1,12 @@
-import { readFileSync } from 'fs';
-import { Element, Component, Mod } from './types';
-import { inspect } from 'util';
+import {readFileSync} from 'fs';
+import {Element, Component, Mod} from './types';
+import {inspect} from 'util';
 const gonzales = require('gonzales-pe');
 
 interface StyleNode {
     type: string;
-    start: { line: number; column: number };
-    end: { line: number; column: number };
+    start: {line: number; column: number};
+    end: {line: number; column: number};
     content: StyleNode[];
 }
 
@@ -14,9 +14,9 @@ extractScss('./example.scss');
 export function extractScss(fileName: string) {
     const scss = readFileSync(fileName, 'utf8');
     const lines = scss.split('\n');
-    const parseTree: StyleNode = gonzales.parse(scss, { syntax: 'scss' });
+    const parseTree: StyleNode = gonzales.parse(scss, {syntax: 'scss'});
     const components = processComponent(parseTree.content);
-    console.log(inspect(components, { depth: 40 }));
+    console.log(inspect(components, {depth: 40}));
     return components;
 
     function getRules(content: StyleNode[]) {
@@ -27,13 +27,14 @@ export function extractScss(fileName: string) {
                 const block = getType(rule.content, 'block');
                 const selectorNodes = getTypes(rule.content, 'selector');
                 const rulePos = lineColToPos(rule.start);
+                const ruleEnd = lineColToPos(rule.end);
 
                 for (const selector of selectorNodes) {
                     const selectorName = nodeToString(selector);
                     const cleanName = selectorName.replace(/^[&_\-\.]+/g, '');
                     const blockContent = nonNull(block).content;
                     // const selectorPos = lineColToPos(selector.start);
-                    rulesets.push({ selectorName, cleanName, blockContent, pos: rulePos });
+                    rulesets.push({selectorName, cleanName, blockContent, pos: rulePos, end: ruleEnd});
                 }
             }
         }
@@ -48,6 +49,7 @@ export function extractScss(fileName: string) {
                     name: node.cleanName,
                     elements: processElement(node.blockContent),
                     pos: node.pos,
+                    end: node.end,
                 });
                 components.push(...processComponent(node.blockContent));
             }
@@ -63,6 +65,7 @@ export function extractScss(fileName: string) {
                     name: node.cleanName,
                     mods: processMod(node.blockContent),
                     pos: node.pos,
+                    end: node.end,
                 });
             }
         });
@@ -76,13 +79,14 @@ export function extractScss(fileName: string) {
                 mods.push({
                     name: node.cleanName,
                     pos: node.pos,
+                    end: node.end,
                 });
             }
         });
         return mods;
     }
 
-    function lineColToPos(obj: { line: number; column: number }) {
+    function lineColToPos(obj: {line: number; column: number}) {
         let pos = 0;
         for (let i = 0; i < obj.line - 1; i++) {
             pos += lines[i].length + 1;
