@@ -1,6 +1,7 @@
-import { Component, Element, Mod } from './types';
+import {Component, Element, Mod, Item} from './types';
 
 export function match(sourceComponents: Component[], destComponents: Component[]) {
+    const allWeakMap = new WeakMap<Item, Item>();
     const componentsWeakMap = new WeakMap<Component, Component>();
     const elementsWeakMap = new WeakMap<Element, Element>();
     const modsWeakMap = new WeakMap<Mod, Mod>();
@@ -10,6 +11,8 @@ export function match(sourceComponents: Component[], destComponents: Component[]
         if (dest) {
             componentsWeakMap.set(dest, source);
             componentsWeakMap.set(source, dest);
+            allWeakMap.set(dest, source);
+            allWeakMap.set(source, dest);
             matchElements(source.elements, dest.elements);
         }
     });
@@ -18,7 +21,7 @@ export function match(sourceComponents: Component[], destComponents: Component[]
         componentWeakMap: componentsWeakMap,
         elementsWeakMap,
         modsWeakMap,
-        findClosestExistsElement,
+        findClosestExistsItem,
     };
 
     function matchElements(sourceElements: Element[], destElements: Element[]) {
@@ -27,6 +30,9 @@ export function match(sourceComponents: Component[], destComponents: Component[]
             if (dest) {
                 elementsWeakMap.set(dest, source);
                 elementsWeakMap.set(source, dest);
+                allWeakMap.set(dest, source);
+                allWeakMap.set(source, dest);
+
                 matchMods(source.mods, dest.mods);
             }
         });
@@ -38,26 +44,33 @@ export function match(sourceComponents: Component[], destComponents: Component[]
             if (dest) {
                 modsWeakMap.set(dest, source);
                 modsWeakMap.set(source, dest);
+                allWeakMap.set(dest, source);
+                allWeakMap.set(source, dest);
             }
         });
     }
 
-    function findClosestExistsElement(component: Component, element: Element) {
-        const destComponent = componentsWeakMap.get(component);
-        if (destComponent) {
-            const idx = component.elements.indexOf(element);
-            for (let i = 0; i < component.elements.length; i++) {
-                if (idx - i >= 0) {
-                    const el = component.elements[idx - i];
-                    const destEl = elementsWeakMap.get(el);
-                    if (destEl) return {upperElement: destEl};
-                }
-                if (idx + i < component.elements.length) {
-                    const el = component.elements[idx + i];
-                    const destEl = elementsWeakMap.get(el);
-                    if (destEl) return {lowerElement: destEl};
-                }
+    function findClosestExistsItem(
+        parentItems: Item[],
+        itemName: string,
+    ): {pos: 'before' | 'after'; item: Item} | undefined {
+        const idx = parentItems.findIndex(item => item.name === itemName);
+        if (idx === -1) {
+            console.log(parentItems);
+            throw new Error('Item not found: ' + itemName);
+        }
+        for (let i = 0; i < parentItems.length; i++) {
+            if (idx - i >= 0) {
+                const item = parentItems[idx - i];
+                const destItem = allWeakMap.get(item);
+                if (destItem) return {pos: 'after', item: destItem};
+            }
+            if (idx + i < parentItems.length) {
+                const item = parentItems[idx + i];
+                const destItem = allWeakMap.get(item);
+                if (destItem) return {pos: 'before', item: destItem};
             }
         }
+        // console.log('Nothing was found: ' + itemName);
     }
 }

@@ -2,15 +2,11 @@ import * as ts from 'typescript';
 import {isComponent, getElementName, getModName} from '../common';
 import {Component, Element, Mod} from './types';
 import {readFileSync} from 'fs';
-import {inspect} from 'util';
 
-export function extract(fileName: string) {
-    const sourceFile = ts.createSourceFile(fileName, readFileSync(fileName, 'utf8'), ts.ScriptTarget.ESNext);
-    return extractor(sourceFile);
+export function extractTSX(content: string) {
+    const sourceFile = ts.createSourceFile('a.tsx', content, ts.ScriptTarget.ESNext);
+    return {components: extractor(sourceFile)};
 }
-
-const res = extract('./example.tsx');
-console.log(inspect(res, {depth: 10}));
 
 function extractor(sourceFile: ts.SourceFile) {
     const components: Component[] = [];
@@ -28,8 +24,10 @@ function extractor(sourceFile: ts.SourceFile) {
         if (componentName) {
             const prevComponent = currentComponent;
             currentComponent = {
+                kind: 'component',
                 name: componentName,
                 elements: [],
+                blockStart: node.pos,
                 pos: node.pos,
                 end: node.end,
             };
@@ -44,10 +42,12 @@ function extractor(sourceFile: ts.SourceFile) {
     function createElement(jsxElement: ts.JsxOpeningElement | ts.JsxSelfClosingElement) {
         if (currentComponent && !isComponent(jsxElement.tagName)) {
             const element: Element = {
+                kind: 'element',
                 name: getElementName(jsxElement.tagName),
                 mods: getMods(jsxElement.attributes),
                 pos: jsxElement.pos,
                 end: jsxElement.end,
+                blockStart: jsxElement.pos,
             };
             currentComponent.elements.push(element);
         }
@@ -71,9 +71,11 @@ function extractor(sourceFile: ts.SourceFile) {
                 const modName = getModName(prop.name.text);
                 if (modName) {
                     mods.push({
+                        kind: 'mod',
                         name: modName,
                         pos: prop.pos,
                         end: prop.end,
+                        blockStart: prop.pos,
                     });
                 }
             }

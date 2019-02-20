@@ -10,31 +10,35 @@ interface StyleNode {
     content: StyleNode[];
 }
 
-extractScss('./example.scss');
-export function extractScss(fileName: string) {
-    const scss = readFileSync(fileName, 'utf8');
-    const lines = scss.split('\n');
-    const parseTree: StyleNode = gonzales.parse(scss, {syntax: 'scss'});
-    const components = processComponent(parseTree.content);
-    console.log(inspect(components, {depth: 40}));
-    return components;
+export function extractSCSS(content: string) {
+    const lines = content.split('\n');
+    const parseTree: StyleNode = gonzales.parse(content, {syntax: 'scss'});
+    return {source: content, components: processComponent(parseTree.content)};
 
     function getRules(content: StyleNode[]) {
         const rulesets = [];
         for (let i = 0; i < content.length; i++) {
             const rule = content[i];
             if (rule.type === 'ruleset') {
-                const block = getType(rule.content, 'block');
+                const block = nonNull(getType(rule.content, 'block'));
                 const selectorNodes = getTypes(rule.content, 'selector');
+                const blockStartPos = lineColToPos(block.start) + 1;
                 const rulePos = lineColToPos(rule.start);
-                const ruleEnd = lineColToPos(rule.end);
+                const ruleEnd = lineColToPos(rule.end) + 1;
 
                 for (const selector of selectorNodes) {
                     const selectorName = nodeToString(selector);
                     const cleanName = selectorName.replace(/^[&_\-\.]+/g, '');
-                    const blockContent = nonNull(block).content;
+                    // console.log(
+                    //     cleanName,
+                    //     JSON.stringify(scss.substring(rulePos, ruleEnd)),
+                    //     rule.start,
+                    //     rule.end,
+                    //     rulePos,
+                    //     ruleEnd,
+                    // );
                     // const selectorPos = lineColToPos(selector.start);
-                    rulesets.push({selectorName, cleanName, blockContent, pos: rulePos, end: ruleEnd});
+                    rulesets.push({selectorName, cleanName, block, blockStartPos, pos: rulePos, end: ruleEnd});
                 }
             }
         }
@@ -46,12 +50,14 @@ export function extractScss(fileName: string) {
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^(&_+|\.)[A-Z]/)) {
                 components.push({
+                    kind: 'component',
                     name: node.cleanName,
-                    elements: processElement(node.blockContent),
+                    elements: processElement(node.block.content),
+                    blockStart: node.blockStartPos,
                     pos: node.pos,
                     end: node.end,
                 });
-                components.push(...processComponent(node.blockContent));
+                components.push(...processComponent(node.block.content));
             }
         });
         return components;
@@ -62,10 +68,12 @@ export function extractScss(fileName: string) {
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&_+[a-z]/)) {
                 elements.push({
+                    kind: 'element',
                     name: node.cleanName,
-                    mods: processMod(node.blockContent),
+                    mods: processMod(node.block.content),
                     pos: node.pos,
                     end: node.end,
+                    blockStart: node.blockStartPos,
                 });
             }
         });
@@ -77,9 +85,11 @@ export function extractScss(fileName: string) {
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&-/)) {
                 mods.push({
+                    kind: 'mod',
                     name: node.cleanName,
                     pos: node.pos,
                     end: node.end,
+                    blockStart: node.blockStartPos,
                 });
             }
         });
@@ -114,9 +124,9 @@ export function extractScss(fileName: string) {
         if (typeof node.content === 'string') return node.content;
         if (node.content.length === 0) return ''; //scss.substring(lineColToPos(node.start), lineColToPos(node.end) + 1);
         const start = lineColToPos(node.content[0].start);
-        const content = excludeBlock ? node.content.filter(n => n.type !== 'block') : node.content;
-        const endNode = nonNull(content[content.length - 1]);
+        const blockContent = excludeBlock ? node.content.filter(n => n.type !== 'block') : node.content;
+        const endNode = nonNull(blockContent[blockContent.length - 1]);
         const end = lineColToPos(endNode.end) + 1;
-        return scss.substring(start, end);
+        return content.substring(start, end);
     }
 }
