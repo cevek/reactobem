@@ -1,0 +1,28 @@
+.App {
+    // &__root {
+    // }
+    &__title {
+    }
+    // &__items {
+    // }
+    &__item {
+    }
+    // &__remove {
+    // }
+    &__fullName {
+        &--blue {
+            color: yellow;
+        }
+        color: red;
+    }
+    // &__count {
+    // }
+    // &__go {
+    // }
+    // &__summary {
+    // }
+    // &__submit-done {
+    // }
+    &__edit {
+    }
+}
