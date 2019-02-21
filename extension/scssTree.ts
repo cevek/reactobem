@@ -1,6 +1,4 @@
-import { readFileSync } from 'fs';
 import { Element, Component, Mod, Loc } from './types';
-import { inspect } from 'util';
 const gonzales = require('gonzales-pe');
 
 interface StyleNode {

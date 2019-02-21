@@ -1,12 +1,13 @@
 import { extractTSX } from './tsxTree';
 import { extractSCSS } from './scssTree';
 import { match } from './matcher';
-import { Component, Element, Mod, Item } from './types';
+import { Component, Element, Item } from './types';
 import { insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents } from './modifySCSS';
 
 export function plugin(tsxContent: string, scssContent: string) {
     const tsx = extractTSX(tsxContent);
     const scss = extractSCSS(scssContent);
+    const fileBaseName = '';
     const { elementsWeakMap, componentWeakMap, findClosestExistsItem } = match(tsx.components, scss.components);
 
     function insert(scssParent: Item | undefined, tsxItems: Item[], tsxName: string, content: string) {
@@ -21,7 +22,15 @@ export function plugin(tsxContent: string, scssContent: string) {
         } else {
             return scssParent
                 ? insertRuleInto(scssContent, scssParent.pos.node, scssParent.pos.inner, content)
-                : scssContent + '\n' + content;
+                : insertRootRule(scssContent, tsxName, content);
+        }
+    }
+
+    function insertRootRule(scssContent: string, componentName: string, ruleContent: string) {
+        if (fileBaseName === componentName) {
+            return scssContent + '\n' + ruleContent;
+        } else {
+            return scssContent + `\n.${fileBaseName} {\n${insertIdents(ruleContent, 4)}\n}`;
         }
     }
 
@@ -37,6 +46,7 @@ export function plugin(tsxContent: string, scssContent: string) {
             return insertComponent(tsxComponent.name, `.${tsxComponent.name} {\n${insertIdents(content, 4)}\n}`);
         }
     }
+
     function insertMod(
         tsxComponent: Component,
         tsxElement: Element,

@@ -1,7 +1,6 @@
 import * as ts from 'typescript';
 import { isComponent, getElementName, getModName } from '../common';
 import { Component, Element, Mod, Loc } from './types';
-import { readFileSync } from 'fs';
 
 export function extractTSX(content: string) {
     const sourceFile = ts.createSourceFile('a.tsx', content, ts.ScriptTarget.ESNext);
