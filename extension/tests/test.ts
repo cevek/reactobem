@@ -72,8 +72,8 @@ function App() {
 );
 
 test(
-    'insert component on empty file',
-    {type: 'component', name: 'App'},
+    'insert main component on empty file',
+    {type: 'mainComponent'},
     `
 function App() {
     return <root/>;
@@ -89,7 +89,7 @@ function App() {
 
 test(
     'insert component on existent file',
-    {type: 'component', name: 'App'},
+    {type: 'mainComponent'},
     `
 function App() {
     return <root/>;
@@ -112,7 +112,7 @@ function App() {
 );
 
 test(
-    'insert element without component',
+    'insert element without main component',
     {type: 'element', component: 'App', name: 'x'},
     `
 function App() {
@@ -201,7 +201,7 @@ function App() {
 );
 
 test(
-    'insert mod',
+    'insert mod with exists another mod',
     {type: 'mod', component: 'App', element: 'x', name: 'blue'},
     `
 function App() {
@@ -235,9 +235,108 @@ function App() {
     `,
 );
 
+test(
+    'insert helper component/element into main component',
+    {type: 'element', component: 'Helper', name: 'main'},
+    `
+function App() {
+    return <root><x mod-blue mod-red/></root>;
+}
+function Helper() {
+    return <main/>;
+}
+`,
+    `
+.App {
+    
+}
+`,
+    `
+.App {
+    &__Helper {
+        &__main {
+            
+        }
+    }
+    
+}
+    `,
+);
+
+test(
+    'insert helper mainComponent/component/element into main component',
+    {type: 'element', component: 'Helper', name: 'main'},
+    `
+function App() {
+    return <root><x mod-blue mod-red/></root>;
+}
+function Helper() {
+    return <main/>;
+}
+`,
+    '',
+    `
+.App {
+    &__Helper {
+        &__main {
+            
+        }
+    }
+}
+    `,
+);
+
+test(
+    'insert mod into sub component/element',
+    {type: 'mod', component: 'Helper', element: 'main', name: 'y'},
+    `
+function App() {
+    return <root><x mod-blue mod-red/></root>;
+}
+function Helper() {
+    return <main mod-x mod-y mod-z/>;
+}
+`,
+    `
+.App {
+    &__Helper {
+        &__main {
+            &--x {
+                
+            }
+            &--z {
+                
+            }
+            color: red;
+        }
+    }
+}    `,
+    `
+.App {
+    &__Helper {
+        &__main {
+            &--x {
+                
+            }
+
+            &--y {
+                
+            }
+            
+            &--z {
+                
+            }
+            color: red;
+        }
+    }
+}
+    `,
+);
+
 function test(
     name: string,
     insert:
+        | {type: 'mainComponent'}
         | {type: 'component'; name: string}
         | {type: 'element'; component: string; name: string}
         | {type: 'mod'; component: string; element: string; name: string},
@@ -246,17 +345,26 @@ function test(
     expectScss: string,
 ) {
     expectScss = expectScss.trim();
-    const p = plugin(tsx, scss);
+    const p = plugin('/tests/App/App.tsx', tsx, scss);
+    if (!p) return;
     let result = '';
-    if (insert.type === 'component') {
-        result = p.insertComponent(insert.name);
+    if (insert.type === 'mainComponent') {
+        result = p.insertMainComponent('');
+    } else if (insert.type === 'component') {
+        result = p.insertComponent(insert.name, '');
     } else if (insert.type === 'element') {
-        const tsxComponent = p.tsx.components.find(cmp => cmp.name === insert.component)!;
-        result = p.insertElement(tsxComponent, insert.name);
+        const tsxComponent =
+            p.tsxMainComponent.name === insert.component
+                ? p.tsxMainComponent
+                : p.tsxMainComponent.components.find(cmp => cmp.name === insert.component)!;
+        result = p.insertElement(tsxComponent, insert.name, '');
     } else if (insert.type === 'mod') {
-        const tsxComponent = p.tsx.components.find(cmp => cmp.name === insert.component)!;
+        const tsxComponent =
+            p.tsxMainComponent.name === insert.component
+                ? p.tsxMainComponent
+                : p.tsxMainComponent.components.find(cmp => cmp.name === insert.component)!;
         const tsxElement = tsxComponent.elements.find(el => el.name === insert.element)!;
-        result = p.insertMod(tsxComponent, tsxElement, insert.name);
+        result = p.insertMod(tsxComponent, tsxElement, insert.name, '');
     }
     if (result.trim() !== expectScss.trim()) {
         console.error(
