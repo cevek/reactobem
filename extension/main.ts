@@ -1,25 +1,27 @@
-import {extractTSX} from './tsxTree';
-import {extractSCSS} from './scssTree';
-import {match} from './matcher';
-import {File, Component, Element, Mod, Item} from './types';
-import {insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents} from './modifySCSS';
+import { extractTSX } from './tsxTree';
+import { extractSCSS } from './scssTree';
+import { match } from './matcher';
+import { Component, Element, Mod, Item } from './types';
+import { insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents } from './modifySCSS';
 
 export function plugin(tsxContent: string, scssContent: string) {
     const tsx = extractTSX(tsxContent);
     const scss = extractSCSS(scssContent);
-    const {elementsWeakMap, componentWeakMap, findClosestExistsItem} = match(tsx.components, scss.components);
+    const { elementsWeakMap, componentWeakMap, findClosestExistsItem } = match(tsx.components, scss.components);
 
     function insert(scssParent: Item | undefined, tsxItems: Item[], tsxName: string, content: string) {
         const closestSCSSElement = findClosestExistsItem(tsxItems, tsxName);
         // console.log('insert', tsxName, closestSCSSElement, tsxItems);
         if (closestSCSSElement) {
             if (closestSCSSElement.pos === 'after') {
-                return insertRuleAfter(scssContent, closestSCSSElement.item, content);
+                return insertRuleAfter(scssContent, closestSCSSElement.item.pos.node, content);
             } else {
-                return insertRuleBefore(scssContent, closestSCSSElement.item, content);
+                return insertRuleBefore(scssContent, closestSCSSElement.item.pos.node, content);
             }
         } else {
-            return scssParent ? insertRuleInto(scssContent, scssParent, content) : scssContent + '\n' + content;
+            return scssParent
+                ? insertRuleInto(scssContent, scssParent.pos.node, scssParent.pos.inner, content)
+                : scssContent + '\n' + content;
         }
     }
 
@@ -39,7 +41,7 @@ export function plugin(tsxContent: string, scssContent: string) {
         tsxComponent: Component,
         tsxElement: Element,
         modName: string,
-        content = `&--${modName} {\n    \n}`,
+        content = `&--${modName} {\n    \n}`
     ) {
         const scssComponent = componentWeakMap.get(tsxComponent);
         if (scssComponent) {
@@ -50,7 +52,7 @@ export function plugin(tsxContent: string, scssContent: string) {
                 return insertElement(
                     tsxComponent,
                     tsxElement.name,
-                    `&__${tsxElement.name} {\n${insertIdents(content, 4)}\n}`,
+                    `&__${tsxElement.name} {\n${insertIdents(content, 4)}\n}`
                 );
             }
         } else {
@@ -58,8 +60,8 @@ export function plugin(tsxContent: string, scssContent: string) {
                 tsxComponent.name,
                 `.${tsxComponent.name} {\n${insertIdents(
                     `&__${tsxElement.name} {\n${insertIdents(content, 4)}\n}`,
-                    4,
-                )}\n}`,
+                    4
+                )}\n}`
             );
         }
     }

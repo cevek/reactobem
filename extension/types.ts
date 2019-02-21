@@ -1,31 +1,29 @@
 export type Item = Component | Element | Mod;
-export interface File {
-    kind: 'file';
-    name: string;
-    components: Component[];
+export interface Loc {
+    start: number;
+    end: number;
+}
+export interface Pos {
+    node: Loc;
+    inner: Loc;
+    token: Loc;
 }
 export interface Component {
     kind: 'component';
     name: string;
-    pos: number;
-    end: number;
+    pos: Pos;
     elements: Element[];
-    blockStart: number;
 }
 
 export interface Element {
     kind: 'element';
     name: string;
-    pos: number;
-    end: number;
+    pos: Pos;
     mods: Mod[];
-    blockStart: number;
 }
 
 export interface Mod {
     kind: 'mod';
     name: string;
-    pos: number;
-    end: number;
-    blockStart: number;
+    pos: Pos;
 }

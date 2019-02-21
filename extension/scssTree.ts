@@ -1,19 +1,26 @@
-import {readFileSync} from 'fs';
-import {Element, Component, Mod} from './types';
-import {inspect} from 'util';
+import { readFileSync } from 'fs';
+import { Element, Component, Mod, Loc } from './types';
+import { inspect } from 'util';
 const gonzales = require('gonzales-pe');
 
 interface StyleNode {
     type: string;
-    start: {line: number; column: number};
-    end: {line: number; column: number};
+    start: { line: number; column: number };
+    end: { line: number; column: number };
     content: StyleNode[];
 }
 
 export function extractSCSS(content: string) {
     const lines = content.split('\n');
-    const parseTree: StyleNode = gonzales.parse(content, {syntax: 'scss'});
-    return {source: content, components: processComponent(parseTree.content)};
+    const parseTree: StyleNode = gonzales.parse(content, { syntax: 'scss' });
+    return { source: content, components: processComponent(parseTree.content) };
+
+    function toLoc(node: StyleNode): Loc {
+        return {
+            start: lineColToPos(node.start),
+            end: lineColToPos(node.end) + 1,
+        };
+    }
 
     function getRules(content: StyleNode[]) {
         const rulesets = [];
@@ -22,13 +29,16 @@ export function extractSCSS(content: string) {
             if (rule.type === 'ruleset') {
                 const block = nonNull(getType(rule.content, 'block'));
                 const selectorNodes = getTypes(rule.content, 'selector');
-                const blockStartPos = lineColToPos(block.start) + 1;
-                const rulePos = lineColToPos(rule.start);
-                const ruleEnd = lineColToPos(rule.end) + 1;
+
+                const ruleLoc = toLoc(rule);
+                const blockLoc = toLoc(block);
+                blockLoc.start++;
 
                 for (const selector of selectorNodes) {
                     const selectorName = nodeToString(selector);
                     const cleanName = selectorName.replace(/^[&_\-\.]+/g, '');
+                    const selectorLoc = toLoc(selector);
+
                     // console.log(
                     //     cleanName,
                     //     JSON.stringify(scss.substring(rulePos, ruleEnd)),
@@ -38,7 +48,12 @@ export function extractSCSS(content: string) {
                     //     ruleEnd,
                     // );
                     // const selectorPos = lineColToPos(selector.start);
-                    rulesets.push({selectorName, cleanName, block, blockStartPos, pos: rulePos, end: ruleEnd});
+                    rulesets.push({
+                        selectorName,
+                        cleanName,
+                        block,
+                        pos: { node: ruleLoc, inner: blockLoc, token: selectorLoc },
+                    });
                 }
             }
         }
@@ -53,9 +68,7 @@ export function extractSCSS(content: string) {
                     kind: 'component',
                     name: node.cleanName,
                     elements: processElement(node.block.content),
-                    blockStart: node.blockStartPos,
                     pos: node.pos,
-                    end: node.end,
                 });
                 components.push(...processComponent(node.block.content));
             }
@@ -72,8 +85,6 @@ export function extractSCSS(content: string) {
                     name: node.cleanName,
                     mods: processMod(node.block.content),
                     pos: node.pos,
-                    end: node.end,
-                    blockStart: node.blockStartPos,
                 });
             }
         });
@@ -88,15 +99,13 @@ export function extractSCSS(content: string) {
                     kind: 'mod',
                     name: node.cleanName,
                     pos: node.pos,
-                    end: node.end,
-                    blockStart: node.blockStartPos,
                 });
             }
         });
         return mods;
     }
 
-    function lineColToPos(obj: {line: number; column: number}) {
+    function lineColToPos(obj: { line: number; column: number }) {
         let pos = 0;
         for (let i = 0; i < obj.line - 1; i++) {
             pos += lines[i].length + 1;

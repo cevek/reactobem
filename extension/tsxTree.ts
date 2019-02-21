@@ -1,16 +1,23 @@
 import * as ts from 'typescript';
-import {isComponent, getElementName, getModName} from '../common';
-import {Component, Element, Mod} from './types';
-import {readFileSync} from 'fs';
+import { isComponent, getElementName, getModName } from '../common';
+import { Component, Element, Mod, Loc } from './types';
+import { readFileSync } from 'fs';
 
 export function extractTSX(content: string) {
     const sourceFile = ts.createSourceFile('a.tsx', content, ts.ScriptTarget.ESNext);
-    return {components: extractor(sourceFile)};
+    return { components: extractor(sourceFile) };
 }
 
 function extractor(sourceFile: ts.SourceFile) {
     const components: Component[] = [];
     let currentComponent: Component | undefined;
+
+    function toLoc(node: ts.Node): Loc {
+        return {
+            start: node.pos,
+            end: node.end,
+        };
+    }
 
     function rootVisitor(node: ts.Node): void {
         let componentName;
@@ -27,9 +34,11 @@ function extractor(sourceFile: ts.SourceFile) {
                 kind: 'component',
                 name: componentName,
                 elements: [],
-                blockStart: node.pos,
-                pos: node.pos,
-                end: node.end,
+                pos: {
+                    node: toLoc(node),
+                    inner: toLoc(node),
+                    token: toLoc(node),
+                },
             };
             components.push(currentComponent);
             ts.forEachChild(node, visitor);
@@ -45,9 +54,11 @@ function extractor(sourceFile: ts.SourceFile) {
                 kind: 'element',
                 name: getElementName(jsxElement.tagName),
                 mods: getMods(jsxElement.attributes),
-                pos: jsxElement.pos,
-                end: jsxElement.end,
-                blockStart: jsxElement.pos,
+                pos: {
+                    node: toLoc(jsxElement),
+                    inner: toLoc(jsxElement),
+                    token: toLoc(jsxElement.tagName),
+                },
             };
             currentComponent.elements.push(element);
         }
@@ -73,9 +84,11 @@ function extractor(sourceFile: ts.SourceFile) {
                     mods.push({
                         kind: 'mod',
                         name: modName,
-                        pos: prop.pos,
-                        end: prop.end,
-                        blockStart: prop.pos,
+                        pos: {
+                            node: toLoc(prop),
+                            inner: toLoc(prop),
+                            token: toLoc(prop.name),
+                        },
                     });
                 }
             }

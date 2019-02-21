@@ -1,25 +1,28 @@
-export function insertRuleInto(scssText: string, into: {pos: number; blockStart: number}, content: string) {
-    const identSize = findIdent(scssText, into.pos) + 4;
-    return (
-        scssText.substr(0, into.blockStart) + `\n${insertIdents(content, identSize)}` + scssText.substr(into.blockStart)
-    );
+export function insertRuleInto(
+    scssText: string,
+    parentPos: { start: number },
+    into: { start: number },
+    content: string
+) {
+    const identSize = findIdent(scssText, parentPos.start) + 4;
+    return scssText.substr(0, into.start) + `\n${insertIdents(content, identSize)}` + scssText.substr(into.start);
 }
 
-export function insertRuleAfter(scssText: string, after: {pos: number; end: number}, content: string) {
-    const identSize = findIdent(scssText, after.pos);
+export function insertRuleAfter(scssText: string, after: { start: number; end: number }, content: string) {
+    const identSize = findIdent(scssText, after.start);
     const ident = ' '.repeat(identSize);
     return (
         scssText.substr(0, after.end) + `\n\n${insertIdents(content, identSize)}\n${ident}` + scssText.substr(after.end)
     );
 }
 
-export function insertRuleBefore(scssText: string, before: {pos: number; end: number}, content: string) {
-    const identSize = findIdent(scssText, before.pos);
+export function insertRuleBefore(scssText: string, before: { start: number; end: number }, content: string) {
+    const identSize = findIdent(scssText, before.start);
     const ident = ' '.repeat(identSize);
     return (
-        scssText.substr(0, before.pos) +
+        scssText.substr(0, before.start) +
         `\n${insertIdents(content, identSize)}\n\n${ident}` +
-        scssText.substr(before.pos)
+        scssText.substr(before.start)
     );
 }
 
