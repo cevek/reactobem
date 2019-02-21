@@ -1,15 +1,16 @@
 import * as ts from 'typescript';
-import { isComponent, getElementName, getModName } from '../common';
-import { Component, Element, Mod, Loc } from './types';
+import {isComponent, getElementName, getModName, getMainComponentName} from '../common';
+import {Component, Element, Mod, Loc, MainComponent} from './types';
 
-export function extractTSX(content: string) {
-    const sourceFile = ts.createSourceFile('a.tsx', content, ts.ScriptTarget.ESNext);
-    return { components: extractor(sourceFile) };
+export function extractTSX(fileName: string, content: string) {
+    const sourceFile = ts.createSourceFile(fileName, content, ts.ScriptTarget.ESNext);
+    return {mainComponent: extractor(sourceFile)};
 }
 
 function extractor(sourceFile: ts.SourceFile) {
-    const components: Component[] = [];
-    let currentComponent: Component | undefined;
+    let mainComponent: MainComponent | undefined;
+    let currentComponent: MainComponent | Component | undefined;
+    const mainComponentName = getMainComponentName(sourceFile.fileName);
 
     function toLoc(node: ts.Node): Loc {
         return {
@@ -29,17 +30,34 @@ function extractor(sourceFile: ts.SourceFile) {
         }
         if (componentName) {
             const prevComponent = currentComponent;
-            currentComponent = {
-                kind: 'component',
-                name: componentName,
-                elements: [],
-                pos: {
-                    node: toLoc(node),
-                    inner: toLoc(node),
-                    token: toLoc(node),
-                },
-            };
-            components.push(currentComponent);
+            if (mainComponentName === componentName) {
+                currentComponent = {
+                    kind: 'mainComponent',
+                    name: componentName,
+                    components: [],
+                    elements: [],
+                    pos: {
+                        node: toLoc(node),
+                        inner: toLoc(node),
+                        token: toLoc(node),
+                    },
+                };
+                mainComponent = currentComponent;
+            } else {
+                currentComponent = {
+                    kind: 'component',
+                    name: componentName,
+                    elements: [],
+                    pos: {
+                        node: toLoc(node),
+                        inner: toLoc(node),
+                        token: toLoc(node),
+                    },
+                };
+                if (mainComponent) {
+                    mainComponent.components.push(currentComponent);
+                }
+            }
             ts.forEachChild(node, visitor);
             currentComponent = prevComponent;
         }
@@ -96,5 +114,5 @@ function extractor(sourceFile: ts.SourceFile) {
         return mods;
     }
     ts.forEachChild(sourceFile, rootVisitor);
-    return components;
+    return mainComponent;
 }

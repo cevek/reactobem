@@ -1,17 +1,19 @@
-import { Element, Component, Mod, Loc } from './types';
+import {Element, Component, Mod, Loc, MainComponent} from './types';
+import {getMainComponentName} from '../common';
 const gonzales = require('gonzales-pe');
 
 interface StyleNode {
     type: string;
-    start: { line: number; column: number };
-    end: { line: number; column: number };
+    start: {line: number; column: number};
+    end: {line: number; column: number};
     content: StyleNode[];
 }
 
-export function extractSCSS(content: string) {
+export function extractSCSS(fileName: string, content: string) {
+    const mainComponentName = getMainComponentName(fileName);
     const lines = content.split('\n');
-    const parseTree: StyleNode = gonzales.parse(content, { syntax: 'scss' });
-    return { source: content, components: processComponent(parseTree.content) };
+    const parseTree: StyleNode = gonzales.parse(content, {syntax: 'scss'});
+    return {source: content, mainComponent: processMainComponent(parseTree.content)};
 
     function toLoc(node: StyleNode): Loc {
         return {
@@ -50,7 +52,7 @@ export function extractSCSS(content: string) {
                         selectorName,
                         cleanName,
                         block,
-                        pos: { node: ruleLoc, inner: blockLoc, token: selectorLoc },
+                        pos: {node: ruleLoc, inner: blockLoc, token: selectorLoc},
                     });
                 }
             }
@@ -58,17 +60,32 @@ export function extractSCSS(content: string) {
         return rulesets;
     }
 
+    function processMainComponent(content: StyleNode[]) {
+        let mainComponent: MainComponent | undefined;
+        getRules(content).forEach(node => {
+            if (node.selectorName.match(/^\.[A-Z]/)) {
+                mainComponent = {
+                    kind: 'mainComponent',
+                    name: node.cleanName,
+                    components: processComponent(node.block.content),
+                    elements: processElement(node.block.content),
+                    pos: node.pos,
+                };
+            }
+        });
+        return mainComponent;
+    }
+
     function processComponent(content: StyleNode[]) {
         const components: Component[] = [];
         getRules(content).forEach(node => {
-            if (node.selectorName.match(/^(&_+|\.)[A-Z]/)) {
+            if (node.selectorName.match(/^&_+[A-Z]/)) {
                 components.push({
                     kind: 'component',
                     name: node.cleanName,
                     elements: processElement(node.block.content),
                     pos: node.pos,
                 });
-                components.push(...processComponent(node.block.content));
             }
         });
         return components;
@@ -103,7 +120,7 @@ export function extractSCSS(content: string) {
         return mods;
     }
 
-    function lineColToPos(obj: { line: number; column: number }) {
+    function lineColToPos(obj: {line: number; column: number}) {
         let pos = 0;
         for (let i = 0; i < obj.line - 1; i++) {
             pos += lines[i].length + 1;

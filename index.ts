@@ -1,11 +1,9 @@
+import {createHash} from 'crypto';
 import * as ts from 'typescript';
-import { basename, extname, dirname } from 'path';
-import { htmlTags, skipTags } from './tags';
-import { createHash } from 'crypto';
-import { getModName, getElementName, isComponent } from './common';
+import {getElementName, getMainComponentName, getModName, isComponent} from './common';
+import {htmlTags, skipTags} from './tags';
 
-
-export default function(program: ts.Program, pluginOptions: { minify?: boolean }) {
+export default function(program: ts.Program, pluginOptions: {minify?: boolean; minifiedSize?: number}) {
     function hash(str: string) {
         return pluginOptions.minify
             ? createHash('sha256')
@@ -13,15 +11,14 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                   .digest()
                   .toString('base64')
                   .replace(/[/+]+/g, '')
-                  .substr(0, 4)
+                  .substr(0, pluginOptions.minifiedSize || 6)
             : str;
     }
     return (ctx: ts.TransformationContext) => {
         return (sourceFile: ts.SourceFile) => {
             if (sourceFile.isDeclarationFile) return sourceFile;
-            const _baseName = basename(sourceFile.fileName, extname(sourceFile.fileName));
-            const baseName = _baseName === 'index' ? basename(dirname(sourceFile.fileName)) : _baseName;
-            const baseNameWithSuffix = baseName === 'src' ? '' : baseName + '__';
+
+            const mainComponentNameWithSuffix = getMainComponentName(sourceFile.fileName) + '__';
 
             function makeElementName(funName: string | undefined, tag: ts.JsxTagNameExpression) {
                 const componentName = funName ? funName + '__' : '';
@@ -29,7 +26,7 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                 const tagName = getElementName(tag);
                 return {
                     tagName: tagName,
-                    elementClassName: hash(baseNameWithSuffix + componentName + tagName),
+                    elementClassName: hash(mainComponentNameWithSuffix + componentName + tagName),
                 };
             }
 
@@ -69,7 +66,7 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                                 );
                             } else {
                                 let value: ts.Expression = ts.createLiteral(
-                                    ' ' + hash(baseNameWithSuffix + tagName + '--' + modName),
+                                    ' ' + hash(mainComponentNameWithSuffix + tagName + '--' + modName),
                                 );
                                 if (prop.initializer) {
                                     const initializer = prop.initializer;
@@ -104,7 +101,7 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                         newAttrs[classNameIdx] = classNameAttr;
                     }
                 }
-                return { newAttrs, htmlTagName };
+                return {newAttrs, htmlTagName};
             }
 
             let funName: string | undefined;
@@ -124,8 +121,8 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                 }
                 if (ts.isJsxSelfClosingElement(node)) {
                     const isCmp = isComponent(node.tagName);
-                    const { tagName, elementClassName } = makeElementName(funName, node.tagName);
-                    const { newAttrs, htmlTagName } = getUpdatedAttrs(tagName, elementClassName, node.attributes);
+                    const {tagName, elementClassName} = makeElementName(funName, node.tagName);
+                    const {newAttrs, htmlTagName} = getUpdatedAttrs(tagName, elementClassName, node.attributes);
                     const tagNameNode = isCmp ? node.tagName : ts.createIdentifier(htmlTagName);
                     return ts.updateJsxSelfClosingElement(
                         node,
@@ -137,8 +134,8 @@ export default function(program: ts.Program, pluginOptions: { minify?: boolean }
                 if (ts.isJsxElement(node)) {
                     const openingElement = node.openingElement;
                     const isCmp = isComponent(openingElement.tagName);
-                    const { tagName, elementClassName } = makeElementName(funName, openingElement.tagName);
-                    const { newAttrs, htmlTagName } = getUpdatedAttrs(
+                    const {tagName, elementClassName} = makeElementName(funName, openingElement.tagName);
+                    const {newAttrs, htmlTagName} = getUpdatedAttrs(
                         tagName,
                         elementClassName,
                         openingElement.attributes,

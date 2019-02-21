@@ -1,86 +1,135 @@
-import { extractTSX } from './tsxTree';
-import { extractSCSS } from './scssTree';
-import { match } from './matcher';
-import { Component, Element, Item } from './types';
-import { insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents } from './modifySCSS';
+import {extractTSX} from './tsxTree';
+import {extractSCSS} from './scssTree';
+import {matchComponents, matchElements} from './matcher';
+import {Component, Element, Item, MainComponent} from './types';
+import {insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents} from './modifySCSS';
+import {getMainComponentName} from '../common';
 
-export function plugin(tsxContent: string, scssContent: string) {
-    const tsx = extractTSX(tsxContent);
-    const scss = extractSCSS(scssContent);
-    const fileBaseName = '';
-    const { elementsWeakMap, componentWeakMap, findClosestExistsItem } = match(tsx.components, scss.components);
+export function plugin(tsxFileName: string, tsxContent: string, scssContent: string) {
+    const tsx = extractTSX(tsxFileName, tsxContent);
+    const scss = extractSCSS(tsxFileName, scssContent);
+    const mainComponentName = getMainComponentName(tsxFileName);
+    if (!tsx.mainComponent || (scss.mainComponent && tsx.mainComponent.name !== scss.mainComponent.name)) return;
+    const tsxMainComponent = tsx.mainComponent;
+    const scssMainComponent = scss.mainComponent;
 
-    function insert(scssParent: Item | undefined, tsxItems: Item[], tsxName: string, content: string) {
-        const closestSCSSElement = findClosestExistsItem(tsxItems, tsxName);
-        // console.log('insert', tsxName, closestSCSSElement, tsxItems);
-        if (closestSCSSElement) {
-            if (closestSCSSElement.pos === 'after') {
-                return insertRuleAfter(scssContent, closestSCSSElement.item.pos.node, content);
-            } else {
-                return insertRuleBefore(scssContent, closestSCSSElement.item.pos.node, content);
-            }
-        } else {
-            return scssParent
-                ? insertRuleInto(scssContent, scssParent.pos.node, scssParent.pos.inner, content)
-                : insertRootRule(scssContent, tsxName, content);
-        }
-    }
+    const weakMap = new WeakMap<Item, Item>();
 
-    function insertRootRule(scssContent: string, componentName: string, ruleContent: string) {
-        if (fileBaseName === componentName) {
-            return scssContent + '\n' + ruleContent;
-        } else {
-            return scssContent + `\n.${fileBaseName} {\n${insertIdents(ruleContent, 4)}\n}`;
-        }
-    }
+    const IDENT_SIZE = 4;
 
-    function insertComponent(tsxComponentName: string, content = `.${tsxComponentName} {\n    \n}`) {
-        return insert(undefined, tsx.components, tsxComponentName, content);
-    }
-
-    function insertElement(tsxComponent: Component, elementName: string, content = `&__${elementName} {\n    \n}`) {
-        const scssComponent = componentWeakMap.get(tsxComponent);
-        if (scssComponent) {
-            return insert(scssComponent, tsxComponent.elements, elementName, content);
-        } else {
-            return insertComponent(tsxComponent.name, `.${tsxComponent.name} {\n${insertIdents(content, 4)}\n}`);
-        }
-    }
-
-    function insertMod(
-        tsxComponent: Component,
-        tsxElement: Element,
-        modName: string,
-        content = `&--${modName} {\n    \n}`
-    ) {
-        const scssComponent = componentWeakMap.get(tsxComponent);
-        if (scssComponent) {
-            const scssElement = elementsWeakMap.get(tsxElement);
-            if (scssElement) {
-                return insert(scssElement, tsxElement.mods, modName, content);
-            } else {
-                return insertElement(
-                    tsxComponent,
-                    tsxElement.name,
-                    `&__${tsxElement.name} {\n${insertIdents(content, 4)}\n}`
-                );
-            }
-        } else {
-            return insertComponent(
-                tsxComponent.name,
-                `.${tsxComponent.name} {\n${insertIdents(
-                    `&__${tsxElement.name} {\n${insertIdents(content, 4)}\n}`,
-                    4
-                )}\n}`
-            );
-        }
+    if (scssMainComponent) {
+        weakMap.set(tsxMainComponent, scssMainComponent);
+        weakMap.set(scssMainComponent, tsxMainComponent);
+        matchComponents(tsxMainComponent.components, scssMainComponent.components, weakMap);
+        matchElements(tsxMainComponent.elements, scssMainComponent.elements, weakMap);
     }
 
     return {
-        tsx,
-        scss,
+        mainComponentName,
+        tsxMainComponent,
+        scssMainComponent,
+        insertMainComponent,
         insertComponent,
         insertElement,
         insertMod,
     };
+
+    function mainComponentPrefix(name: string, content: string) {
+        return `.${name} {\n${insertIdents(content, IDENT_SIZE)}\n}`;
+    }
+    function componentPrefix(name: string, content: string) {
+        return `&__${name} {\n${insertIdents(content, IDENT_SIZE)}\n}`;
+    }
+    function elementPrefix(name: string, content: string) {
+        return `&__${name} {\n${insertIdents(content, IDENT_SIZE)}\n}`;
+    }
+    function modPrefix(name: string, content: string) {
+        return `&--${name} {\n${insertIdents(content, IDENT_SIZE)}\n}`;
+    }
+
+    function getOpposite<T extends Item>(item: T) {
+        return weakMap.get(item) as T | undefined;
+    }
+
+    function insertRule(
+        scssParent: Item,
+        closestSCSSItem: {pos: 'before' | 'after'; item: Item} | undefined,
+        ruleContent: string,
+    ) {
+        // console.log('insert', tsxName, closestSCSSElement, tsxItems);
+        if (closestSCSSItem) {
+            if (closestSCSSItem.pos === 'after') {
+                return insertRuleAfter(scssContent, closestSCSSItem.item.pos.node, ruleContent);
+            } else {
+                return insertRuleBefore(scssContent, closestSCSSItem.item.pos.node, ruleContent);
+            }
+        } else {
+            return insertRuleInto(scssContent, scssParent.pos.node, scssParent.pos.inner, ruleContent);
+        }
+    }
+
+    function insertComponent(tsxComponentName: string, content: string) {
+        const closestSCSSItem = findClosestExistsItem(tsxMainComponent.components, tsxComponentName);
+        if (scssMainComponent) {
+            return insertRule(scssMainComponent, closestSCSSItem, componentPrefix(tsxComponentName, content));
+        } else {
+            return insertMainComponent(componentPrefix(tsxComponentName, content));
+        }
+    }
+
+    function insertMainComponent(content: string) {
+        return scssContent + mainComponentPrefix(mainComponentName, content);
+    }
+
+    function insertElement(tsxComponent: MainComponent | Component, elementName: string, content: string) {
+        const scssComponent = getOpposite(tsxComponent);
+        const elementContent = elementPrefix(elementName, content);
+        if (scssComponent) {
+            const closestSCSSElement = findClosestExistsItem(tsxComponent.elements, elementName);
+            const scssEl = getOpposite(scssMainComponent!.elements[0]);
+            // console.log(scssMainComponent, scssEl, elementName, closestSCSSElement);
+            return insertRule(scssComponent, closestSCSSElement, elementContent);
+        } else {
+            if (tsxComponent.kind === 'component') {
+                return insertComponent(tsxComponent.name, elementContent);
+            } else {
+                return insertMainComponent(elementContent);
+            }
+        }
+    }
+
+    function insertMod(tsxComponent: MainComponent | Component, tsxElement: Element, modName: string, content: string) {
+        const scssElement = getOpposite(tsxElement);
+        const modContent = modPrefix(modName, content);
+        if (scssElement) {
+            const closestSCSSMod = findClosestExistsItem(tsxElement.mods, modName);
+            return insertRule(scssElement, closestSCSSMod, modContent);
+        } else {
+            return insertElement(tsxComponent, tsxElement.name, modContent);
+        }
+    }
+
+    function findClosestExistsItem<T extends Item>(
+        parentItems: T[],
+        itemName: string,
+    ): {pos: 'before' | 'after'; item: T} | undefined {
+        const idx = parentItems.findIndex(item => item.name === itemName);
+        if (idx === -1) {
+            console.log(parentItems);
+            throw new Error('Item not found: ' + itemName);
+        }
+        for (let i = 0; i < parentItems.length; i++) {
+            if (idx - i >= 0) {
+                const item = parentItems[idx - i];
+                const destItem = getOpposite(item);
+                if (destItem) return {pos: 'after', item: destItem};
+            }
+            if (idx + i < parentItems.length) {
+                const item = parentItems[idx + i];
+                const destItem = getOpposite(item);
+                if (destItem) return {pos: 'before', item: destItem};
+            }
+        }
+        // console.log('Nothing was found: ' + itemName);
+    }
 }
