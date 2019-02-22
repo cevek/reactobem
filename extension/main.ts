@@ -118,7 +118,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
             case 'element':
                 return insertElement(tsxItem.parent, tsxItem.name, '');
             case 'mod':
-                return insertMod(tsxItem.parent.parent, tsxItem.parent, tsxItem.name, '');
+                return insertMod(tsxItem.parent, tsxItem.name, '');
         }
     }
 
@@ -152,14 +152,14 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
         }
     }
 
-    function insertMod(tsxComponent: MainComponent | Component, tsxElement: Element, modName: string, content: string) {
+    function insertMod(tsxElement: Element, modName: string, content: string) {
         const scssElement = getOpposite(tsxElement);
         const modContent = modPrefix(modName, content);
         if (scssElement) {
             const closestSCSSMod = findClosestExistsItem(tsxElement.mods, modName);
             return insertRule(scssElement, closestSCSSMod, modContent);
         } else {
-            return insertElement(tsxComponent, tsxElement.name, modContent);
+            return insertElement(tsxElement.parent, tsxElement.name, modContent);
         }
     }
 

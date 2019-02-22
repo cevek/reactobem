@@ -364,7 +364,7 @@ function test(
                 ? p.tsx.mainComponent
                 : p.tsx.mainComponent.components.find(cmp => cmp.name === insert.component)!;
         const tsxElement = tsxComponent.elements.find(el => el.name === insert.element)!;
-        result = p.scss.insertMod(tsxComponent, tsxElement, insert.name, '');
+        result = p.scss.insertMod(tsxElement, insert.name, '');
     }
     if (result.trim() !== expectScss.trim()) {
         console.error(
