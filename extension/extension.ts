@@ -3,15 +3,15 @@ import * as vscode from 'vscode';
 import {plugin} from './main';
 
 vscode.languages.registerDefinitionProvider('typescriptreact', {
-    provideDefinition(document, position) {
-        const tsxContent = document.getText();
-        const scssFileName = document.fileName.replace(/\.tsx$/, '.scss');
-        try {
-            const scssContent = readFileSync(scssFileName, 'utf8');
-            const p = plugin(document.fileName, tsxContent, scssContent);
+    provideDefinition(tsxDocument, position) {
+        const tsxContent = tsxDocument.getText();
+        const scssFileName = tsxDocument.fileName.replace(/\.tsx$/, '.scss');
+        return vscode.workspace.openTextDocument(scssFileName).then(scssDocument => {
+            const scssContent = scssDocument.getText();
+            const p = plugin(tsxDocument.fileName, tsxContent, scssContent);
+            // debugger;
             if (p) {
-                const offsetPos = document.offsetAt(position);
-                // debugger;
+                const offsetPos = tsxDocument.offsetAt(position);
                 const tsxEntity = p.tsx.getEntity(offsetPos);
                 if (tsxEntity) {
                     const scssEntity = p.tsx.getSCSSEntity(tsxEntity);
@@ -25,15 +25,23 @@ vscode.languages.registerDefinitionProvider('typescriptreact', {
                             ),
                         };
                         return location;
-                    } else if (tsxEntity.kind === 'element' && !p.shouldSkipTagName(tsxEntity.name)) {
+                    } else if (tsxEntity.kind !== 'element' || !p.shouldSkipTagName(tsxEntity.name)) {
                         const newSCSSContent = p.scss.insert(tsxEntity);
-                        writeFileSync(scssFileName, newSCSSContent);
+                        // writeFileSync(scssFileName, newSCSSContent);
+                        // // if (!scssDocument.isDirty) {
+                        const edit = new vscode.WorkspaceEdit();
+                        scssDocument.getWordRangeAtPosition;
+                        edit.replace(
+                            vscode.Uri.file(scssDocument.fileName),
+                            new vscode.Range(new vscode.Position(0, 0), scssDocument.positionAt(scssContent.length)),
+                            newSCSSContent,
+                        );
+                        vscode.workspace.applyEdit(edit);
+                        // }
                     }
                 }
             }
-        } catch (e) {
-            console.error(e);
-        }
+        });
         return null;
     },
 });
