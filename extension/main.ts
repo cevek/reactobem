@@ -32,6 +32,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
             getEntity: getEntity.bind(undefined, tsxMainComponent),
             mainComponent: tsxMainComponent,
             getSCSSEntity: getOpposite,
+            rename: renameTSX,
         },
         scss: {
             getEntity: getEntity.bind(undefined, scssMainComponent),
@@ -42,6 +43,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
             insertComponent,
             insertElement,
             insertMod,
+            rename: renameSCSSRule,
         },
     };
 
@@ -185,5 +187,17 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
             }
         }
         // console.log('Nothing was found: ' + itemName);
+    }
+
+    function renameTSX(item: Item, newName: string) {
+        return (
+            tsxContent.substr(0, item.pos.token.start.offset) + newName + scssContent.substr(item.pos.token.end.offset)
+        );
+    }
+
+    function renameSCSSRule(item: Item, newName: string) {
+        return (
+            scssContent.substr(0, item.pos.token.start.offset) + newName + scssContent.substr(item.pos.token.end.offset)
+        );
     }
 }
