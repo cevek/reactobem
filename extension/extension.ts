@@ -1,4 +1,4 @@
-import {readFileSync} from 'fs';
+import {readFileSync, writeFileSync} from 'fs';
 import * as vscode from 'vscode';
 import {plugin} from './main';
 
@@ -25,6 +25,9 @@ vscode.languages.registerDefinitionProvider('typescriptreact', {
                             ),
                         };
                         return location;
+                    } else if (tsxEntity.kind === 'element' && !p.shouldSkipTagName(tsxEntity.name)) {
+                        const newSCSSContent = p.scss.insert(tsxEntity);
+                        writeFileSync(scssFileName, newSCSSContent);
                     }
                 }
             }

@@ -4,6 +4,7 @@ import {matchComponents, matchElements} from './matcher';
 import {Component, Element, Item, MainComponent, Loc} from './types';
 import {insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents} from './modifySCSS';
 import {getMainComponentName} from '../common';
+import {skipTags} from '../tags';
 
 export function plugin(tsxFileName: string, tsxContent: string, scssContent: string) {
     const tsx = extractTSX(tsxFileName, tsxContent);
@@ -26,6 +27,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
 
     return {
         mainComponentName,
+        shouldSkipTagName,
         tsx: {
             getEntity: getEntity.bind(undefined, tsxMainComponent),
             mainComponent: tsxMainComponent,
@@ -35,12 +37,17 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
             getEntity: getEntity.bind(undefined, scssMainComponent),
             mainComponent: scssMainComponent,
             getTSXEntity: getOpposite,
+            insert,
             insertMainComponent,
             insertComponent,
             insertElement,
             insertMod,
         },
     };
+
+    function shouldSkipTagName(tagName: string) {
+        return skipTags.includes(tagName);
+    }
 
     function mainComponentPrefix(name: string, content: string) {
         return `.${name} {\n${insertIdents(content, IDENT_SIZE)}\n}`;
@@ -99,6 +106,19 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
             }
         } else {
             return insertRuleInto(scssContent, scssParent.pos.node, scssParent.pos.inner, ruleContent);
+        }
+    }
+
+    function insert(tsxItem: Item) {
+        switch (tsxItem.kind) {
+            case 'mainComponent':
+                return insertMainComponent('');
+            case 'component':
+                return insertComponent(tsxItem.name, '');
+            case 'element':
+                return insertElement(tsxItem.parent, tsxItem.name, '');
+            case 'mod':
+                return insertMod(tsxItem.parent.parent, tsxItem.parent, tsxItem.name, '');
         }
     }
 
