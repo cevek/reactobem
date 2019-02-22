@@ -8,10 +8,10 @@ vscode.languages.registerDefinitionProvider('typescriptreact', {
         const scssFileName = document.fileName.replace(/\.tsx$/, '.scss');
         try {
             const scssContent = readFileSync(scssFileName, 'utf8');
-            const p = plugin(scssFileName, tsxContent, scssContent);
+            const p = plugin(document.fileName, tsxContent, scssContent);
             if (p) {
                 const offsetPos = document.offsetAt(position);
-                debugger;
+                // debugger;
                 const tsxEntity = p.tsx.getEntity(offsetPos);
                 if (tsxEntity) {
                     const scssEntity = p.tsx.getSCSSEntity(tsxEntity);

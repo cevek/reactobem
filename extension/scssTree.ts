@@ -17,8 +17,8 @@ export function extractSCSS(fileName: string, content: string) {
 
     function toLoc(node: StyleNode): Loc {
         return {
-            start: {offset: lineColToPos(node.start), line: node.start.line, column: node.start.column},
-            end: {offset: lineColToPos(node.end) + 1, line: node.end.line, column: node.end.column},
+            start: {offset: lineColToPos(node.start), line: node.start.line - 1, column: node.start.column - 1},
+            end: {offset: lineColToPos(node.end) + 1, line: node.end.line - 1, column: node.end.column},
         };
     }
 

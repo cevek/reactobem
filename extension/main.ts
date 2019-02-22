@@ -60,7 +60,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
     }
 
     function withinLoc(loc: Loc, offset: number) {
-        return loc.start.offset <= offset && offset < loc.end.offset;
+        return loc.start.offset <= offset && offset <= loc.end.offset;
     }
 
     function getEntity(mainComponent: MainComponent | undefined, offset: number) {
