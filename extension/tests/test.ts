@@ -349,22 +349,22 @@ function test(
     if (!p) return;
     let result = '';
     if (insert.type === 'mainComponent') {
-        result = p.insertMainComponent('');
+        result = p.scss.insertMainComponent('');
     } else if (insert.type === 'component') {
-        result = p.insertComponent(insert.name, '');
+        result = p.scss.insertComponent(insert.name, '');
     } else if (insert.type === 'element') {
         const tsxComponent =
-            p.tsxMainComponent.name === insert.component
-                ? p.tsxMainComponent
-                : p.tsxMainComponent.components.find(cmp => cmp.name === insert.component)!;
-        result = p.insertElement(tsxComponent, insert.name, '');
+            p.tsx.mainComponent.name === insert.component
+                ? p.tsx.mainComponent
+                : p.tsx.mainComponent.components.find(cmp => cmp.name === insert.component)!;
+        result = p.scss.insertElement(tsxComponent, insert.name, '');
     } else if (insert.type === 'mod') {
         const tsxComponent =
-            p.tsxMainComponent.name === insert.component
-                ? p.tsxMainComponent
-                : p.tsxMainComponent.components.find(cmp => cmp.name === insert.component)!;
+            p.tsx.mainComponent.name === insert.component
+                ? p.tsx.mainComponent
+                : p.tsx.mainComponent.components.find(cmp => cmp.name === insert.component)!;
         const tsxElement = tsxComponent.elements.find(el => el.name === insert.element)!;
-        result = p.insertMod(tsxComponent, tsxElement, insert.name, '');
+        result = p.scss.insertMod(tsxComponent, tsxElement, insert.name, '');
     }
     if (result.trim() !== expectScss.trim()) {
         console.error(
