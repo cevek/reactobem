@@ -16,6 +16,7 @@ export interface MainComponent {
     pos: Pos;
     components: Component[];
     elements: Element[];
+    parent: MainComponent;
 }
 export interface Component {
     type: 'tsx' | 'scss';
@@ -24,21 +25,22 @@ export interface Component {
     name: string;
     pos: Pos;
     elements: Element[];
+    parent: MainComponent;
 }
 
 export interface Element {
     type: 'tsx' | 'scss';
-
     kind: 'element';
     name: string;
     pos: Pos;
     mods: Mod[];
+    parent: MainComponent | Component;
 }
 
 export interface Mod {
     type: 'tsx' | 'scss';
-
     kind: 'mod';
     name: string;
     pos: Pos;
+    parent: Element;
 }

@@ -47,6 +47,7 @@ function extractor(sourceFile: ts.SourceFile) {
                         inner: toLoc(node),
                         token: toLoc(componentName),
                     },
+                    parent: currentComponent as MainComponent,
                 };
                 mainComponent = currentComponent;
             } else {
@@ -60,6 +61,7 @@ function extractor(sourceFile: ts.SourceFile) {
                         inner: toLoc(node),
                         token: toLoc(componentName),
                     },
+                    parent: currentComponent as MainComponent,
                 };
                 if (mainComponent) {
                     mainComponent.components.push(currentComponent);
@@ -78,13 +80,15 @@ function extractor(sourceFile: ts.SourceFile) {
                 type: 'tsx',
                 kind: 'element',
                 name: getElementName(jsxElement.tagName),
-                mods: getMods(jsxElement.attributes),
+                mods: [],
                 pos: {
                     node: toLoc(jsxElement),
                     inner: toLoc(jsxElement),
                     token: toLoc(jsxElement.tagName),
                 },
+                parent: currentComponent,
             };
+            element.mods = getMods(jsxElement.attributes, element);
             currentComponent.elements.push(element);
         }
     }
@@ -99,7 +103,7 @@ function extractor(sourceFile: ts.SourceFile) {
         return ts.forEachChild(node, visitor);
     }
 
-    function getMods(attrs: ts.JsxAttributes) {
+    function getMods(attrs: ts.JsxAttributes, element: Element) {
         const mods: Mod[] = [];
         for (let i = 0; i < attrs.properties.length; i++) {
             const prop = attrs.properties[i];
@@ -115,6 +119,7 @@ function extractor(sourceFile: ts.SourceFile) {
                             inner: toLoc(prop),
                             token: toLoc(prop.name),
                         },
+                        parent: element,
                     });
                 }
             }

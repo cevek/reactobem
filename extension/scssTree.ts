@@ -1,5 +1,6 @@
 import {Element, Component, Mod, Loc, MainComponent} from './types';
 import {getMainComponentName} from '../common';
+import {element} from 'prop-types';
 const gonzales = require('gonzales-pe');
 
 interface StyleNode {
@@ -68,59 +69,66 @@ export function extractSCSS(fileName: string, content: string) {
                     type: 'scss',
                     kind: 'mainComponent',
                     name: node.cleanName,
-                    components: processComponent(node.block.content),
-                    elements: processElement(node.block.content),
+                    components: [],
+                    elements: [],
                     pos: node.pos,
+                    parent: undefined!,
                 };
+                mainComponent.components = processComponent(node.block.content, mainComponent);
+                mainComponent.elements = processElement(node.block.content, mainComponent);
             }
         });
         return mainComponent;
     }
 
-    function processComponent(content: StyleNode[]) {
+    function processComponent(content: StyleNode[], mainComponent: MainComponent) {
         const components: Component[] = [];
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&_+[A-Z]/)) {
-                components.push({
+                const component: Component = {
                     type: 'scss',
-
                     kind: 'component',
                     name: node.cleanName,
-                    elements: processElement(node.block.content),
+                    elements: [],
                     pos: node.pos,
-                });
+                    parent: mainComponent,
+                };
+                components.push(component);
+                component.elements = processElement(node.block.content, component);
             }
         });
         return components;
     }
 
-    function processElement(content: StyleNode[]) {
+    function processElement(content: StyleNode[], component: MainComponent | Component) {
         const elements: Element[] = [];
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&_+[a-z]/)) {
-                elements.push({
+                const element: Element = {
                     type: 'scss',
-
                     kind: 'element',
                     name: node.cleanName,
-                    mods: processMod(node.block.content),
+                    mods: [],
                     pos: node.pos,
-                });
+                    parent: component,
+                };
+                elements.push(element);
+                element.mods = processMod(node.block.content, element);
             }
         });
         return elements;
     }
 
-    function processMod(content: StyleNode[]) {
+    function processMod(content: StyleNode[], element: Element) {
         const mods: Mod[] = [];
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&-/)) {
                 mods.push({
                     type: 'scss',
-
                     kind: 'mod',
                     name: node.cleanName,
                     pos: node.pos,
+                    parent: element,
                 });
             }
         });
