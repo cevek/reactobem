@@ -13,45 +13,52 @@ function extractor(sourceFile: ts.SourceFile) {
     const mainComponentName = getMainComponentName(sourceFile.fileName);
 
     function toLoc(node: ts.Node): Loc {
+        const start_ = node.getStart(sourceFile);
+        const start = ts.getLineAndCharacterOfPosition(sourceFile, start_);
+        const end = ts.getLineAndCharacterOfPosition(sourceFile, node.end);
         return {
-            start: node.pos,
-            end: node.end,
+            start: {offset: start_, line: start.line, column: start.character},
+            end: {offset: node.end, line: end.line, column: end.character},
         };
     }
 
     function rootVisitor(node: ts.Node): void {
-        let componentName;
+        let componentName: ts.Identifier | undefined;
         if (ts.isVariableStatement(node)) {
             const varDecl = node.declarationList.declarations[0];
-            componentName = ts.isIdentifier(varDecl.name) ? varDecl.name.text : undefined;
+            if (ts.isIdentifier(varDecl.name)) {
+                componentName = varDecl.name;
+            }
         }
         if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) {
-            componentName = node.name && ts.isIdentifier(node.name) ? node.name.text : undefined;
+            componentName = node.name && ts.isIdentifier(node.name) ? node.name : undefined;
         }
         if (componentName) {
             const prevComponent = currentComponent;
-            if (mainComponentName === componentName) {
+            if (mainComponentName === componentName.text) {
                 currentComponent = {
+                    type: 'tsx',
                     kind: 'mainComponent',
-                    name: componentName,
+                    name: componentName.text,
                     components: [],
                     elements: [],
                     pos: {
                         node: toLoc(node),
                         inner: toLoc(node),
-                        token: toLoc(node),
+                        token: toLoc(componentName),
                     },
                 };
                 mainComponent = currentComponent;
             } else {
                 currentComponent = {
+                    type: 'tsx',
                     kind: 'component',
-                    name: componentName,
+                    name: componentName.text,
                     elements: [],
                     pos: {
                         node: toLoc(node),
                         inner: toLoc(node),
-                        token: toLoc(node),
+                        token: toLoc(componentName),
                     },
                 };
                 if (mainComponent) {
@@ -68,6 +75,7 @@ function extractor(sourceFile: ts.SourceFile) {
     function createElement(jsxElement: ts.JsxOpeningElement | ts.JsxSelfClosingElement) {
         if (currentComponent && !isComponent(jsxElement.tagName)) {
             const element: Element = {
+                type: 'tsx',
                 kind: 'element',
                 name: getElementName(jsxElement.tagName),
                 mods: getMods(jsxElement.attributes),
@@ -99,6 +107,7 @@ function extractor(sourceFile: ts.SourceFile) {
                 const modName = getModName(prop.name.text);
                 if (modName) {
                     mods.push({
+                        type: 'tsx',
                         kind: 'mod',
                         name: modName,
                         pos: {

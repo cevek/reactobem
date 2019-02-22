@@ -1,28 +1,30 @@
+import { Loc } from "./types";
+
 export function insertRuleInto(
     scssText: string,
-    parentPos: { start: number },
-    into: { start: number },
+    parentPos: Loc,
+    into: Loc,
     content: string
 ) {
-    const identSize = findIdent(scssText, parentPos.start) + 4;
-    return scssText.substr(0, into.start) + `\n${insertIdents(content, identSize)}` + scssText.substr(into.start);
+    const identSize = findIdent(scssText, parentPos.start.offset) + 4;
+    return scssText.substr(0, into.start.offset) + `\n${insertIdents(content, identSize)}` + scssText.substr(into.start.offset);
 }
 
-export function insertRuleAfter(scssText: string, after: { start: number; end: number }, content: string) {
-    const identSize = findIdent(scssText, after.start);
+export function insertRuleAfter(scssText: string, after: Loc, content: string) {
+    const identSize = findIdent(scssText, after.start.offset);
     const ident = ' '.repeat(identSize);
     return (
-        scssText.substr(0, after.end) + `\n\n${insertIdents(content, identSize)}\n${ident}` + scssText.substr(after.end)
+        scssText.substr(0, after.end.offset) + `\n\n${insertIdents(content, identSize)}\n${ident}` + scssText.substr(after.end.offset)
     );
 }
 
-export function insertRuleBefore(scssText: string, before: { start: number; end: number }, content: string) {
-    const identSize = findIdent(scssText, before.start);
+export function insertRuleBefore(scssText: string, before: Loc, content: string) {
+    const identSize = findIdent(scssText, before.start.offset);
     const ident = ' '.repeat(identSize);
     return (
-        scssText.substr(0, before.start) +
+        scssText.substr(0, before.start.offset) +
         `\n${insertIdents(content, identSize)}\n\n${ident}` +
-        scssText.substr(before.start)
+        scssText.substr(before.start.offset)
     );
 }
 

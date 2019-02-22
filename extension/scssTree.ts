@@ -17,8 +17,8 @@ export function extractSCSS(fileName: string, content: string) {
 
     function toLoc(node: StyleNode): Loc {
         return {
-            start: lineColToPos(node.start),
-            end: lineColToPos(node.end) + 1,
+            start: {offset: lineColToPos(node.start), line: node.start.line, column: node.start.column},
+            end: {offset: lineColToPos(node.end) + 1, line: node.end.line, column: node.end.column},
         };
     }
 
@@ -32,7 +32,7 @@ export function extractSCSS(fileName: string, content: string) {
 
                 const ruleLoc = toLoc(rule);
                 const blockLoc = toLoc(block);
-                blockLoc.start++;
+                blockLoc.start.offset++;
 
                 for (const selector of selectorNodes) {
                     const selectorName = nodeToString(selector);
@@ -65,6 +65,7 @@ export function extractSCSS(fileName: string, content: string) {
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^\.[A-Z]/)) {
                 mainComponent = {
+                    type: 'scss',
                     kind: 'mainComponent',
                     name: node.cleanName,
                     components: processComponent(node.block.content),
@@ -81,6 +82,8 @@ export function extractSCSS(fileName: string, content: string) {
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&_+[A-Z]/)) {
                 components.push({
+                    type: 'scss',
+
                     kind: 'component',
                     name: node.cleanName,
                     elements: processElement(node.block.content),
@@ -96,6 +99,8 @@ export function extractSCSS(fileName: string, content: string) {
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&_+[a-z]/)) {
                 elements.push({
+                    type: 'scss',
+
                     kind: 'element',
                     name: node.cleanName,
                     mods: processMod(node.block.content),
@@ -111,6 +116,8 @@ export function extractSCSS(fileName: string, content: string) {
         getRules(content).forEach(node => {
             if (node.selectorName.match(/^&-/)) {
                 mods.push({
+                    type: 'scss',
+
                     kind: 'mod',
                     name: node.cleanName,
                     pos: node.pos,

@@ -1,9 +1,9 @@
-import { extractTSX } from './tsxTree';
-import { extractSCSS } from './scssTree';
-import { matchComponents, matchElements } from './matcher';
-import { Component, Element, Item, MainComponent, Loc } from './types';
-import { insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents } from './modifySCSS';
-import { getMainComponentName } from '../common';
+import {extractTSX} from './tsxTree';
+import {extractSCSS} from './scssTree';
+import {matchComponents, matchElements} from './matcher';
+import {Component, Element, Item, MainComponent, Loc} from './types';
+import {insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents} from './modifySCSS';
+import {getMainComponentName} from '../common';
 
 export function plugin(tsxFileName: string, tsxContent: string, scssContent: string) {
     const tsx = extractTSX(tsxFileName, tsxContent);
@@ -59,27 +59,27 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
         return weakMap.get(item) as T | undefined;
     }
 
-    function withinLoc(loc: Loc, pos: number) {
-        return loc.start >= pos && pos < loc.end;
+    function withinLoc(loc: Loc, offset: number) {
+        return loc.start.offset <= offset && offset < loc.end.offset;
     }
 
-    function getEntity(mainComponent: MainComponent | undefined, pos: number) {
+    function getEntity(mainComponent: MainComponent | undefined, offset: number) {
         if (!mainComponent) return;
-        if (withinLoc(mainComponent.pos.token, pos)) return getOpposite(mainComponent);
+        if (withinLoc(mainComponent.pos.token, offset)) return mainComponent;
         for (let i = 0; i < mainComponent.components.length; i++) {
             const component = mainComponent.components[i];
-            if (withinLoc(component.pos.token, pos)) return getOpposite(component);
-            const el = iterElements(mainComponent.elements);
+            if (withinLoc(component.pos.token, offset)) return component;
+            const el = iterElements(component.elements);
             if (el) return el;
         }
         return iterElements(mainComponent.elements);
         function iterElements(elements: Element[]) {
             for (let i = 0; i < elements.length; i++) {
                 const element = elements[i];
-                if (withinLoc(element.pos.token, pos)) return getOpposite(element);
+                if (withinLoc(element.pos.token, offset)) return element;
                 for (let j = 0; j < element.mods.length; j++) {
                     const mod = element.mods[j];
-                    if (withinLoc(mod.pos.token, pos)) return getOpposite(mod);
+                    if (withinLoc(mod.pos.token, offset)) return mod;
                 }
             }
         }
@@ -87,8 +87,8 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
 
     function insertRule(
         scssParent: Item,
-        closestSCSSItem: { pos: 'before' | 'after'; item: Item } | undefined,
-        ruleContent: string
+        closestSCSSItem: {pos: 'before' | 'after'; item: Item} | undefined,
+        ruleContent: string,
     ) {
         // console.log('insert', tsxName, closestSCSSElement, tsxItems);
         if (closestSCSSItem) {
@@ -145,8 +145,8 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
 
     function findClosestExistsItem<T extends Item>(
         parentItems: T[],
-        itemName: string
-    ): { pos: 'before' | 'after'; item: T } | undefined {
+        itemName: string,
+    ): {pos: 'before' | 'after'; item: T} | undefined {
         const idx = parentItems.findIndex(item => item.name === itemName);
         if (idx === -1) {
             console.log(parentItems);
@@ -156,12 +156,12 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
             if (idx - i >= 0) {
                 const item = parentItems[idx - i];
                 const destItem = getOpposite(item);
-                if (destItem) return { pos: 'after', item: destItem };
+                if (destItem) return {pos: 'after', item: destItem};
             }
             if (idx + i < parentItems.length) {
                 const item = parentItems[idx + i];
                 const destItem = getOpposite(item);
-                if (destItem) return { pos: 'before', item: destItem };
+                if (destItem) return {pos: 'before', item: destItem};
             }
         }
         // console.log('Nothing was found: ' + itemName);

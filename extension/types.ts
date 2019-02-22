@@ -1,7 +1,7 @@
 export type Item = MainComponent | Component | Element | Mod;
 export interface Loc {
-    start: number;
-    end: number;
+    start: {offset: number, line: number, column: number};
+    end: {offset: number, line: number, column: number};
 }
 export interface Pos {
     node: Loc;
@@ -10,6 +10,7 @@ export interface Pos {
 }
 
 export interface MainComponent {
+    type: 'tsx' | 'scss';
     kind: 'mainComponent';
     name: string;
     pos: Pos;
@@ -17,6 +18,8 @@ export interface MainComponent {
     elements: Element[];
 }
 export interface Component {
+    type: 'tsx' | 'scss';
+
     kind: 'component';
     name: string;
     pos: Pos;
@@ -24,6 +27,8 @@ export interface Component {
 }
 
 export interface Element {
+    type: 'tsx' | 'scss';
+
     kind: 'element';
     name: string;
     pos: Pos;
@@ -31,6 +36,8 @@ export interface Element {
 }
 
 export interface Mod {
+    type: 'tsx' | 'scss';
+
     kind: 'mod';
     name: string;
     pos: Pos;

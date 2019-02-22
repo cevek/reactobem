@@ -1,3 +1,5 @@
+import * as React from 'react';
+
 export function App() {
     return (
         <root>
@@ -5,7 +7,7 @@ export function App() {
             <items>
                 <item>
                     <remove />
-                    <exist/>
+                    <exist />
                     <fullName />
                     <count />
                     <go />
