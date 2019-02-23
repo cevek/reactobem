@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import {plugin} from './main';
+import {Loc} from './types';
 
 function updateDoc(document: vscode.TextDocument, newContent: string) {
     const edit = new vscode.WorkspaceEdit();
@@ -140,3 +141,34 @@ vscode.languages.registerDefinitionProvider('scss', {
         return null;
     },
 });
+
+function toPosition(loc: {line: number; column: number}) {
+    return new vscode.Position(loc.line, loc.column);
+}
+const scssDiagnostics = vscode.languages.createDiagnosticCollection('scss');
+vscode.workspace.onDidChangeTextDocument(event => {
+    checkUnusedSCSSItems(event.document);
+});
+vscode.workspace.onDidOpenTextDocument(event => {
+    checkUnusedSCSSItems(event);
+});
+
+async function checkUnusedSCSSItems(doc: vscode.TextDocument) {
+    const type = doc.fileName.endsWith('tsx') ? 'tsx' : doc.fileName.endsWith('scss') ? 'scss' : undefined;
+    if (type) {
+        const info = await getInfo(type, doc, new vscode.Position(0, 0));
+        if (info) {
+            const unusedItems = info.plugin.scss.findUnused();
+            const diags = unusedItems.map(item => {
+                const typeStr =
+                    item.kind === 'mainComponent' ? 'main component' : item.kind === 'mod' ? 'modificator' : item.kind;
+                return new vscode.Diagnostic(
+                    new vscode.Range(toPosition(item.pos.node.start), toPosition(item.pos.node.end)),
+                    `Unused scss ${typeStr} "${item.name}"`,
+                    vscode.DiagnosticSeverity.Error,
+                );
+            });
+            scssDiagnostics.set([[vscode.Uri.file(info.scssDocument.fileName), diags]]);
+        }
+    }
+}

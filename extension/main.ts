@@ -37,6 +37,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
         },
         scss: {
             getEntity: getEntity.bind(undefined, scssMainComponent),
+            findUnused: findUnused.bind(undefined, scssMainComponent),
             mainComponent: scssMainComponent,
             getTSXEntity: getOpposite,
             insert,
@@ -224,5 +225,26 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
         return (
             scssContent.substr(0, item.pos.token.start.offset) + content + scssContent.substr(item.pos.token.end.offset)
         );
+    }
+
+    function findUnused(mainComponent: MainComponent | undefined) {
+        const items: Item[] = [];
+        if (!mainComponent) return items;
+        if (!getOpposite(mainComponent)) items.push(mainComponent);
+        for (const component of mainComponent.components) {
+            if (!getOpposite(component)) items.push(component);
+            iterElements(component.elements);
+        }
+        iterElements(mainComponent.elements);
+        return items;
+
+        function iterElements(elements: Element[]) {
+            for (const element of elements) {
+                if (!getOpposite(element)) items.push(element);
+                for (const mod of element.mods) {
+                    if (!getOpposite(mod)) items.push(mod);
+                }
+            }
+        }
     }
 }
