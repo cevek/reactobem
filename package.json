@@ -29,7 +29,8 @@
     "dependencies": {
         "@types/node": ">8.0.0",
         "@types/react": ">15.0.0",
-        "gonzales-pe": "^4.2.3",
+        "gonzales-pe": ">4.2.0",
+        "postcss": ">6.0.0",
         "typescript": ">3.0.0"
     },
     "devDependencies": {

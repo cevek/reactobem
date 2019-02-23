@@ -1,18 +1,10 @@
-import {createHash} from 'crypto';
 import * as ts from 'typescript';
-import {getElementName, getMainComponentName, getModName, isComponent} from './common';
+import {getElementName, getMainComponentName, getModName, isComponent, getHashOfClassName} from './common';
 import {htmlTags, skipTags} from './tags';
 
 export default function(program: ts.Program, pluginOptions: {minify?: boolean; minifiedSize?: number}) {
     function hash(str: string) {
-        return pluginOptions.minify
-            ? createHash('sha256')
-                  .update(str)
-                  .digest()
-                  .toString('base64')
-                  .replace(/[/+]+/g, '')
-                  .substr(0, pluginOptions.minifiedSize || 6)
-            : str;
+        return pluginOptions.minify ? getHashOfClassName(str, pluginOptions.minifiedSize) : str;
     }
     return (ctx: ts.TransformationContext) => {
         return (sourceFile: ts.SourceFile) => {

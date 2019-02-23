@@ -1,5 +1,6 @@
 import * as ts from 'typescript';
 import {extname, basename, dirname} from 'path';
+import {createHash} from 'crypto';
 
 export function getElementName(tag: ts.JsxTagNameExpression) {
     return ts.isIdentifier(tag) ? tag.text : ts.isPropertyAccessExpression(tag) ? tag.name.text : 'this';
@@ -17,4 +18,13 @@ export function getMainComponentName(fileName: string) {
     const _baseName = basename(fileName, extname(fileName));
     const baseName = _baseName === 'index' ? basename(dirname(fileName)) : _baseName;
     return baseName === 'src' ? '' : baseName;
+}
+
+export function getHashOfClassName(str: string, minifiedSize = 6) {
+    return createHash('sha256')
+        .update(str)
+        .digest()
+        .toString('base64')
+        .replace(/[/+]+/g, '')
+        .substr(0, minifiedSize);
 }
