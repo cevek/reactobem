@@ -46,6 +46,7 @@ function extractor(sourceFile: ts.SourceFile) {
                         node: toLoc(node),
                         inner: toLoc(node),
                         token: toLoc(componentName),
+                        endToken: undefined,
                     },
                     parent: currentComponent as MainComponent,
                 };
@@ -60,6 +61,7 @@ function extractor(sourceFile: ts.SourceFile) {
                         node: toLoc(node),
                         inner: toLoc(node),
                         token: toLoc(componentName),
+                        endToken: undefined,
                     },
                     parent: currentComponent as MainComponent,
                 };
@@ -74,7 +76,7 @@ function extractor(sourceFile: ts.SourceFile) {
         return ts.forEachChild(node, visitor);
     }
 
-    function createElement(jsxElement: ts.JsxOpeningElement | ts.JsxSelfClosingElement) {
+    function createElement(jsxElement: ts.JsxOpeningElement | ts.JsxSelfClosingElement, closingElement: ts.JsxClosingElement | undefined) {
         if (currentComponent && !isComponent(jsxElement.tagName)) {
             const element: Element = {
                 type: 'tsx',
@@ -85,6 +87,7 @@ function extractor(sourceFile: ts.SourceFile) {
                     node: toLoc(jsxElement),
                     inner: toLoc(jsxElement),
                     token: toLoc(jsxElement.tagName),
+                    endToken: closingElement ? toLoc(closingElement.tagName) : undefined,
                 },
                 parent: currentComponent,
             };
@@ -95,10 +98,10 @@ function extractor(sourceFile: ts.SourceFile) {
 
     function visitor(node: ts.Node): void {
         if (ts.isJsxSelfClosingElement(node)) {
-            createElement(node);
+            createElement(node, undefined);
         }
         if (ts.isJsxElement(node)) {
-            createElement(node.openingElement);
+            createElement(node.openingElement, node.closingElement);
         }
         return ts.forEachChild(node, visitor);
     }
@@ -118,6 +121,7 @@ function extractor(sourceFile: ts.SourceFile) {
                             node: toLoc(prop),
                             inner: toLoc(prop),
                             token: toLoc(prop.name),
+                            endToken: undefined,
                         },
                         parent: element,
                     });

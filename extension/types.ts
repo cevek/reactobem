@@ -7,6 +7,7 @@ export interface Pos {
     node: Loc;
     inner: Loc;
     token: Loc;
+    endToken: Loc | undefined;
 }
 
 export interface MainComponent {
@@ -20,7 +21,6 @@ export interface MainComponent {
 }
 export interface Component {
     type: 'tsx' | 'scss';
-
     kind: 'component';
     name: string;
     pos: Pos;

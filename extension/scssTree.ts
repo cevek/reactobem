@@ -53,7 +53,7 @@ export function extractSCSS(fileName: string, content: string) {
                         selectorName,
                         cleanName,
                         block,
-                        pos: {node: ruleLoc, inner: blockLoc, token: selectorLoc},
+                        pos: {node: ruleLoc, inner: blockLoc, token: selectorLoc, endToken: undefined},
                     });
                 }
             }

@@ -6,6 +6,7 @@ import {insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents} from '.
 import {getMainComponentName} from '../common';
 import {skipTags} from '../tags';
 
+export type PluginReturn = ReturnType<typeof plugin>;
 export function plugin(tsxFileName: string, tsxContent: string, scssContent: string) {
     const tsx = extractTSX(tsxFileName, tsxContent);
     const scss = extractSCSS(tsxFileName, scssContent);
@@ -190,14 +191,38 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
     }
 
     function renameTSX(item: Item, newName: string) {
-        return (
-            tsxContent.substr(0, item.pos.token.start.offset) + newName + scssContent.substr(item.pos.token.end.offset)
-        );
+        if (item.kind === 'mod') {
+            newName = `mod-${newName}`;
+        }
+        const diff = item.name.length - newName.length;
+        const content =
+            tsxContent.substr(0, item.pos.token.start.offset) + newName + tsxContent.substr(item.pos.token.end.offset);
+        if (item.pos.endToken) {
+            return (
+                content.substr(0, item.pos.endToken.start.offset - diff) +
+                newName +
+                content.substr(item.pos.endToken.end.offset - diff)
+            );
+        }
+        return content;
     }
 
     function renameSCSSRule(item: Item, newName: string) {
+        let content = '';
+        switch (item.kind) {
+            case 'mainComponent':
+                content = `.${newName}`;
+                break;
+            case 'component':
+            case 'element':
+                content = `&__${newName}`;
+                break;
+            case 'mod':
+                content = `&--${newName}`;
+                break;
+        }
         return (
-            scssContent.substr(0, item.pos.token.start.offset) + newName + scssContent.substr(item.pos.token.end.offset)
+            scssContent.substr(0, item.pos.token.start.offset) + content + scssContent.substr(item.pos.token.end.offset)
         );
     }
 }
