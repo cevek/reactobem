@@ -1,10 +1,11 @@
 import {extractTSX} from './tsxTree';
 import {extractSCSS} from './scssTree';
 import {matchComponents, matchElements} from './matcher';
-import {Component, Element, Item, MainComponent, Loc} from './types';
+import {Component, Element, Item, MainComponent, Loc, Replace} from './types';
 import {insertRuleAfter, insertRuleBefore, insertRuleInto, insertIdents} from './modifySCSS';
 import {getMainComponentName} from '../common';
 import {skipTags} from '../tags';
+
 
 export type PluginReturn = ReturnType<typeof plugin>;
 export function plugin(tsxFileName: string, tsxContent: string, scssContent: string) {
@@ -113,7 +114,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
         }
     }
 
-    function insert(tsxItem: Item) {
+    function insert(tsxItem: Item): {text: string; range: Loc}[] {
         switch (tsxItem.kind) {
             case 'mainComponent':
                 return insertMainComponent('');
@@ -135,8 +136,17 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
         }
     }
 
-    function insertMainComponent(content: string) {
-        return scssContent + mainComponentPrefix(mainComponentName, content);
+    function insertMainComponent(content: string): Replace[] {
+        const linesCount = scssContent.split('\n').length;
+        return [
+            {
+                text: mainComponentPrefix(mainComponentName, content),
+                range: {
+                    start: {offset: scssContent.length, line: linesCount, column: 0},
+                    end: {offset: scssContent.length, line: linesCount, column: 0},
+                },
+            },
+        ];
     }
 
     function insertElement(tsxComponent: MainComponent | Component, elementName: string, content: string) {
@@ -191,24 +201,27 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
         // console.log('Nothing was found: ' + itemName);
     }
 
-    function renameTSX(item: Item, newName: string) {
+    function renameTSX(item: Item, newName: string): Replace[] {
         if (item.kind === 'mod') {
             newName = `mod-${newName}`;
         }
-        const diff = item.name.length - newName.length;
-        const content =
-            tsxContent.substr(0, item.pos.token.start.offset) + newName + tsxContent.substr(item.pos.token.end.offset);
+        const tokenReplace = {
+            text: newName,
+            range: item.pos.token,
+        };
         if (item.pos.endToken) {
-            return (
-                content.substr(0, item.pos.endToken.start.offset - diff) +
-                newName +
-                content.substr(item.pos.endToken.end.offset - diff)
-            );
+            return [
+                tokenReplace,
+                {
+                    text: newName,
+                    range: item.pos.endToken,
+                },
+            ];
         }
-        return content;
+        return [tokenReplace];
     }
 
-    function renameSCSSRule(item: Item, newName: string) {
+    function renameSCSSRule(item: Item, newName: string): Replace[] {
         let content = '';
         switch (item.kind) {
             case 'mainComponent':
@@ -222,9 +235,12 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
                 content = `&--${newName}`;
                 break;
         }
-        return (
-            scssContent.substr(0, item.pos.token.start.offset) + content + scssContent.substr(item.pos.token.end.offset)
-        );
+        return [
+            {
+                text: content,
+                range: item.pos.token,
+            },
+        ];
     }
 
     function findUnused(mainComponent: MainComponent | undefined) {

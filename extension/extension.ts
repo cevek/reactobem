@@ -2,13 +2,15 @@ import * as vscode from 'vscode';
 import {plugin} from './main';
 import {Loc} from './types';
 
-function updateDoc(document: vscode.TextDocument, newContent: string) {
+function updateDoc(document: vscode.TextDocument, replaces: {text: string; range: Loc}[]) {
     const edit = new vscode.WorkspaceEdit();
-    edit.replace(
-        vscode.Uri.file(document.fileName),
-        new vscode.Range(new vscode.Position(0, 0), document.positionAt(document.getText().length)),
-        newContent,
-    );
+    replaces.forEach(replace => {
+        edit.replace(
+            vscode.Uri.file(document.fileName),
+            new vscode.Range(toPosition(replace.range.start), toPosition(replace.range.end)),
+            replace.text,
+        );
+    });
     return vscode.workspace.applyEdit(edit);
 }
 
@@ -50,10 +52,10 @@ vscode.commands.registerCommand('frename', async (args: {data: Info}) => {
     const p = args.data!;
     const newName = await vscode.window.showInputBox({value: p.scssEntity!.name});
     if (newName) {
-        const newSCSSContent = p.plugin.scss.rename(p.scssEntity!, newName);
-        const newTSXContent = p.plugin.tsx.rename(p.tsxEntity!, newName);
-        await updateDoc(p.scssDocument, newSCSSContent);
-        await updateDoc(p.tsxDocument, newTSXContent);
+        const scssReplaces = p.plugin.scss.rename(p.scssEntity!, newName);
+        const tsxReplaces = p.plugin.tsx.rename(p.tsxEntity!, newName);
+        await updateDoc(p.scssDocument, scssReplaces);
+        await updateDoc(p.tsxDocument, tsxReplaces);
     }
 });
 

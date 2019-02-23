@@ -44,3 +44,8 @@ export interface Mod {
     pos: Pos;
     parent: Element;
 }
+
+export interface Replace {
+    text: string;
+    range: Loc;
+}

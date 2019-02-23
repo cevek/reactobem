@@ -34,6 +34,7 @@ export function extractSCSS(fileName: string, content: string) {
                 const ruleLoc = toLoc(rule);
                 const blockLoc = toLoc(block);
                 blockLoc.start.offset++;
+                blockLoc.start.column++;
 
                 for (const selector of selectorNodes) {
                     const selectorName = nodeToString(selector);

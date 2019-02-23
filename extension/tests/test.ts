@@ -1,4 +1,5 @@
 import {plugin} from '../main';
+import {Replace} from '../types';
 
 test(
     'insert element',
@@ -347,25 +348,35 @@ function test(
     expectScss = expectScss.trim();
     const p = plugin('/tests/App/App.tsx', tsx, scss);
     if (!p) return;
-    let result = '';
+    let replaces: Replace[] = [];
     if (insert.type === 'mainComponent') {
-        result = p.scss.insertMainComponent('');
+        replaces = p.scss.insertMainComponent('');
     } else if (insert.type === 'component') {
-        result = p.scss.insertComponent(insert.name, '');
+        replaces = p.scss.insertComponent(insert.name, '');
     } else if (insert.type === 'element') {
         const tsxComponent =
             p.tsx.mainComponent.name === insert.component
                 ? p.tsx.mainComponent
                 : p.tsx.mainComponent.components.find(cmp => cmp.name === insert.component)!;
-        result = p.scss.insertElement(tsxComponent, insert.name, '');
+        replaces = p.scss.insertElement(tsxComponent, insert.name, '');
     } else if (insert.type === 'mod') {
         const tsxComponent =
             p.tsx.mainComponent.name === insert.component
                 ? p.tsx.mainComponent
                 : p.tsx.mainComponent.components.find(cmp => cmp.name === insert.component)!;
         const tsxElement = tsxComponent.elements.find(el => el.name === insert.element)!;
-        result = p.scss.insertMod(tsxElement, insert.name, '');
+        replaces = p.scss.insertMod(tsxElement, insert.name, '');
     }
+
+    let result = scss;
+    let diff = 0;
+    replaces.forEach(replace => {
+        result =
+            result.substring(0, replace.range.start.offset - diff) +
+            replace.text +
+            result.substring(replace.range.end.offset - diff);
+        diff += replace.range.end.offset - replace.range.start.offset - replace.text.length;
+    });
     if (result.trim() !== expectScss.trim()) {
         console.error(
             `test "${name}" failed`,
