@@ -1,25 +1,42 @@
 import * as ts from 'typescript';
-import {getElementName, getMainComponentName, getModName, isComponent, getHashOfClassName} from './common';
+import {getMainComponentName, getModName, getHashOfClassName} from './common';
 import {htmlTags, skipTags} from './tags';
+import { isComponent, getElementName } from './tsCommon';
 
-export default function(program: ts.Program, pluginOptions: {minify?: boolean; minifiedSize?: number}) {
+export default function(program: ts.Program, pluginOptions: {}) {
+    const minify = process.env.NODE_ENV === 'production';
     function hash(str: string) {
-        return pluginOptions.minify ? getHashOfClassName(str, pluginOptions.minifiedSize) : str;
+        return minify ? getHashOfClassName(str) : str;
     }
     return (ctx: ts.TransformationContext) => {
         return (sourceFile: ts.SourceFile) => {
             if (sourceFile.isDeclarationFile) return sourceFile;
 
-            const mainComponentNameWithSuffix = getMainComponentName(sourceFile.fileName) + '__';
+            const mainComponentName = getMainComponentName(sourceFile.fileName);
 
-            function makeElementName(funName: string | undefined, tag: ts.JsxTagNameExpression) {
-                const componentName = funName ? funName + '__' : '';
-                // console.log(fun && fun.name.text);
-                const tagName = getElementName(tag);
-                return {
-                    tagName: tagName,
-                    elementClassName: hash(mainComponentNameWithSuffix + componentName + tagName),
-                };
+            function makeElementName(funName: string | undefined, tagName: string) {
+                let prefix = '';
+                if (mainComponentName) {
+                    prefix += mainComponentName + '__';
+                }
+                if (funName && mainComponentName !== funName) {
+                    prefix += funName + '__';
+                }
+                return hash(prefix + tagName);
+            }
+
+            function joinExpr(left: ts.Expression, right: ts.Expression, delimeter?: string) {
+                if (ts.isStringLiteral(left) && ts.isStringLiteral(right)) {
+                    return ts.createLiteral(left.text + (delimeter === undefined ? '' : delimeter) + right.text);
+                } else {
+                    return ts.createBinary(
+                        left,
+                        ts.SyntaxKind.PlusToken,
+                        delimeter === undefined
+                            ? right
+                            : ts.createBinary(ts.createLiteral(delimeter), ts.SyntaxKind.PlusToken, right),
+                    );
+                }
             }
 
             function getUpdatedAttrs(tagName: string, elementClassName: string, attrs: ts.JsxAttributes) {
@@ -38,14 +55,7 @@ export default function(program: ts.Program, pluginOptions: {minify?: boolean; m
                                     ? prop.initializer.expression!
                                     : prop.initializer) || ts.createLiteral('');
 
-                            expr = expr
-                                ? ts.createBinary(
-                                      expr,
-                                      ts.SyntaxKind.PlusToken,
-                                      ts.createBinary(ts.createLiteral(' '), ts.SyntaxKind.PlusToken, init),
-                                  )
-                                : init;
-
+                            expr = expr ? joinExpr(expr, init, ' ') : init;
                             classNameIdx = newAttrs.length;
                             newAttrs.push(undefined!);
                             continue;
@@ -57,9 +67,8 @@ export default function(program: ts.Program, pluginOptions: {minify?: boolean; m
                                     `<${tagName}> has ${prop.getText()} but ${tagName} is not valid element name`,
                                 );
                             } else {
-                                let value: ts.Expression = ts.createLiteral(
-                                    ' ' + hash(mainComponentNameWithSuffix + tagName + '--' + modName),
-                                );
+                                const modClassName = makeElementName(funName, tagName + '--' + modName);
+                                let value: ts.Expression = ts.createLiteral(' ' + modClassName);
                                 if (prop.initializer) {
                                     const initializer = prop.initializer;
                                     value = ts.createConditional(
@@ -70,7 +79,7 @@ export default function(program: ts.Program, pluginOptions: {minify?: boolean; m
                                         ts.createLiteral(''),
                                     );
                                 }
-                                expr = expr ? ts.createBinary(expr, ts.SyntaxKind.PlusToken, value) : value;
+                                expr = expr ? joinExpr(expr, value) : value;
                             }
                             continue;
                         }
@@ -113,7 +122,8 @@ export default function(program: ts.Program, pluginOptions: {minify?: boolean; m
                 }
                 if (ts.isJsxSelfClosingElement(node)) {
                     const isCmp = isComponent(node.tagName);
-                    const {tagName, elementClassName} = makeElementName(funName, node.tagName);
+                    const tagName = getElementName(node.tagName);
+                    const elementClassName = makeElementName(funName, tagName);
                     const {newAttrs, htmlTagName} = getUpdatedAttrs(tagName, elementClassName, node.attributes);
                     const tagNameNode = isCmp ? node.tagName : ts.createIdentifier(htmlTagName);
                     return ts.updateJsxSelfClosingElement(
@@ -126,7 +136,8 @@ export default function(program: ts.Program, pluginOptions: {minify?: boolean; m
                 if (ts.isJsxElement(node)) {
                     const openingElement = node.openingElement;
                     const isCmp = isComponent(openingElement.tagName);
-                    const {tagName, elementClassName} = makeElementName(funName, openingElement.tagName);
+                    const tagName = getElementName(openingElement.tagName);
+                    const elementClassName = makeElementName(funName, tagName);
                     const {newAttrs, htmlTagName} = getUpdatedAttrs(
                         tagName,
                         elementClassName,

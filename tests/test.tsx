@@ -34,7 +34,7 @@ assert(
 );
 assert(
     (() => <some mod-foo {...props} title="abc" className={xx} mod-bar={false} id="123" />).toString(),
-    '() => React.createElement("div", Object.assign({}, props, { title: "abc", className: "test__some" + " test__some--foo" + (" " + xx) + (false ? " test__some--bar" : ""), id: "123" }))'
+    '() => React.createElement("div", Object.assign({}, props, { title: "abc", className: "test__some test__some--foo" + (" " + xx) + (false ? " test__some--bar" : ""), id: "123" }))'
 );
 assert(
     (() => <ns.Bar className={xx} />).toString(),
