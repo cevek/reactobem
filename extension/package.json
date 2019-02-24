@@ -2,7 +2,7 @@
 	"name": "reactobem",
 	"displayName": "reactobem",
 	"description": "",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"publisher": "cevek",
 	"engines": {
 		"vscode": "^1.31.0"
@@ -16,14 +16,6 @@
 		"onLanguage:typescriptreact"
 	],
 	"main": "./dist/extension/extension.js",
-	"contributes": {
-		"commands": [
-			{
-				"command": "extension.helloWorld",
-				"title": "Hello World"
-			}
-		]
-	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "rm -rf dist && tsc",
