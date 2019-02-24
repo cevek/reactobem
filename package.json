@@ -1,6 +1,6 @@
 {
     "name": "reactobem",
-    "version": "1.0.4",
+    "version": "1.0.9",
     "description": "Add to your react components BEM classnames",
     "main": "dist/index.js",
     "scripts": {
@@ -16,6 +16,7 @@
         "dist/index.js",
         "dist/tags.js",
         "dist/common.js",
+        "dist/tsCommon.js",
         "customElements.d.ts",
         "customElements.js"
     ],

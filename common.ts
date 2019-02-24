@@ -12,10 +12,17 @@ export function getMainComponentName(fileName: string) {
 }
 
 export function getHashOfClassName(str: string, minifiedSize = 6) {
-    return createHash('sha256')
+    const hash = createHash('sha256')
         .update(str)
         .digest()
-        .toString('base64')
-        .replace(/[/+]+/g, '')
-        .substr(0, minifiedSize);
+        .toString('base64');
+    let s = '';
+    for (let i = 0; i < hash.length; i++) {
+        const sym = hash[i];
+        if (sym === '+' || sym === '/') continue;
+        if (s === '' && Number.isInteger(+sym)) continue;
+        s += sym;
+        if (s.length === minifiedSize) return s;
+    }
+    return s;
 }

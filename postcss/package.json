@@ -1,6 +1,6 @@
 {
     "name": "reactobem-postcss",
-    "version": "1.0.2",
+    "version": "1.0.6",
     "description": "",
     "main": "dist/postcss/index.js",
     "scripts": {

@@ -3,11 +3,13 @@ import {getHashOfClassName} from '../common';
 
 export default postcss.plugin('reactobem', () => {
     return async (css, result) => {
-        css.walkRules(/^\./, rule => {
-            if (rule.type === 'rule') {
-                rule.selectors = rule.selectors!.map(hashClassName);
-            }
-        });
+        if (process.env.NODE_ENV === 'production') {
+            css.walkRules(/^\./, rule => {
+                if (rule.type === 'rule') {
+                    rule.selectors = rule.selectors!.map(hashClassName);
+                }
+            });
+        }
     };
 });
 

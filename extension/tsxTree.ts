@@ -1,6 +1,7 @@
 import * as ts from 'typescript';
-import {isComponent, getElementName, getModName, getMainComponentName} from '../common';
+import {getModName, getMainComponentName} from '../common';
 import {Component, Element, Mod, Loc, MainComponent} from './types';
+import {getElementName, isComponent} from '../tsCommon';
 
 export function extractTSX(fileName: string, content: string) {
     const sourceFile = ts.createSourceFile(fileName, content, ts.ScriptTarget.ESNext);
@@ -76,7 +77,10 @@ function extractor(sourceFile: ts.SourceFile) {
         return ts.forEachChild(node, visitor);
     }
 
-    function createElement(jsxElement: ts.JsxOpeningElement | ts.JsxSelfClosingElement, closingElement: ts.JsxClosingElement | undefined) {
+    function createElement(
+        jsxElement: ts.JsxOpeningElement | ts.JsxSelfClosingElement,
+        closingElement: ts.JsxClosingElement | undefined,
+    ) {
         if (currentComponent && !isComponent(jsxElement.tagName)) {
             const element: Element = {
                 type: 'tsx',
