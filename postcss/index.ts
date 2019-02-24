@@ -1,5 +1,5 @@
 import * as postcss from 'postcss';
-import {getHashOfClassName} from './common';
+import {getHashOfClassName} from '../common';
 
 export default postcss.plugin('reactobem', () => {
     return async (css, result) => {

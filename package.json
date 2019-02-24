@@ -4,7 +4,9 @@
     "description": "Add to your react components BEM classnames",
     "main": "dist/index.js",
     "scripts": {
-        "test": "npx ttsc && node dist/tests/test"
+        "test": "npx ttsc && node dist/tests/test",
+        "build": "npx tsc",
+        "prepublish": "rm -rf dist && npm run build"
     },
     "repository": {
         "type": "git",
@@ -12,7 +14,10 @@
     },
     "files": [
         "dist/index.js",
-        "dist/tags.js"
+        "dist/tags.js",
+        "dist/common.js",
+        "customElements.d.ts",
+        "customElements.js"
     ],
     "keywords": [
         "react",
@@ -30,7 +35,6 @@
         "@types/node": ">8.0.0",
         "@types/react": ">15.0.0",
         "gonzales-pe": ">4.2.0",
-        "postcss": ">6.0.0",
         "typescript": ">3.0.0"
     },
     "devDependencies": {

@@ -1,0 +1,16 @@
+{
+    "name": "reactobem-postcss",
+    "version": "1.0.2",
+    "description": "",
+    "main": "dist/postcss/index.js",
+    "scripts": {
+        "build": "tsc",
+        "prepublish": "rm -rf dist && npm run build"
+    },
+    "keywords": [],
+    "author": "cevek",
+    "license": "ISC",
+    "dependencies": {
+        "postcss": ">6.0.0"
+    }
+}

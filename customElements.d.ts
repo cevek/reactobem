@@ -4,6 +4,6 @@ declare namespace JSX {
     }
 }
 
-interface CustomHTMLAttributes extends React.HTMLAttributes<HTMLElement> {
+interface CustomHTMLAttributes extends React.AllHTMLAttributes<HTMLElement> {
     as?: string;
 }

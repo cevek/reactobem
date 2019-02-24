@@ -2,10 +2,10 @@
     "compilerOptions": {
         "target": "esnext",
         "module": "commonjs",
+        "declaration": true,
         "jsx": "react",
         "outDir": "dist",
         "strict": true,
-        "plugins": [{ "transform": "./index.ts" }]
-    },
-    "exclude": ["node_modules"]
+        "plugins": [{"transform": "./index.ts"}]
+    }
 }

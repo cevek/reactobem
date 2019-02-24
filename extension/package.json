@@ -2,7 +2,8 @@
 	"name": "reactobem",
 	"displayName": "reactobem",
 	"description": "",
-	"version": "0.0.1",
+	"version": "1.0.0",
+	"publisher": "cevek",
 	"engines": {
 		"vscode": "^1.31.0"
 	},
@@ -25,7 +26,7 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
-		"compile": "tsc",
+		"compile": "rm -rf dist && tsc",
 		"watch": "tsc -w",
 		"postinstall": "node ./node_modules/vscode/bin/install",
 		"test": "npm run compile && node ./node_modules/vscode/bin/test"
