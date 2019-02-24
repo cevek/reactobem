@@ -2,6 +2,84 @@ import * as vscode from 'vscode';
 import {plugin} from './main';
 import {Loc} from './types';
 
+const scssDiagnostics = vscode.languages.createDiagnosticCollection('scss');
+
+export function activate() {
+    vscode.workspace.onDidChangeTextDocument(event => {
+        checkUnusedSCSSItems(event.document);
+    });
+    vscode.workspace.onDidOpenTextDocument(event => {
+        checkUnusedSCSSItems(event);
+    });
+
+    vscode.languages.registerCodeActionsProvider('scss', {
+        provideCodeActions(document, range) {
+            return codeAction('scss', document, range.start);
+        },
+    });
+
+    vscode.languages.registerCodeActionsProvider('typescriptreact', {
+        provideCodeActions(document, range) {
+            return codeAction('tsx', document, range.start);
+        },
+    });
+
+    vscode.commands.registerCommand('frename', async (args: {data: Info}) => {
+        const p = args.data!;
+        const newName = await vscode.window.showInputBox({value: p.scssEntity!.name});
+        if (newName) {
+            const scssReplaces = p.plugin.scss.rename(p.scssEntity!, newName);
+            const tsxReplaces = p.plugin.tsx.rename(p.tsxEntity!, newName);
+            await updateDoc(p.scssDocument, scssReplaces);
+            await updateDoc(p.tsxDocument, tsxReplaces);
+        }
+    });
+
+    vscode.languages.registerDefinitionProvider('typescriptreact', {
+        async provideDefinition(document, position) {
+            const info = await getInfo('tsx', document, position);
+            if (!info) return;
+            const {scssEntity, tsxEntity: _tsxEntity, scssDocument} = info;
+            const tsxEntity = _tsxEntity!;
+            if (scssEntity) {
+                const {start, end} = scssEntity.pos.token;
+                const location: vscode.Location = {
+                    uri: vscode.Uri.file(scssDocument.fileName),
+                    range: new vscode.Range(
+                        new vscode.Position(start.line, start.column),
+                        new vscode.Position(end.line, end.column),
+                    ),
+                };
+                return location;
+            } else if (tsxEntity!.kind !== 'element' || !info.plugin.shouldSkipTagName(tsxEntity.name)) {
+                const newSCSSContent = info.plugin.scss.insert(tsxEntity);
+                updateDoc(scssDocument, newSCSSContent);
+            }
+            return null;
+        },
+    });
+
+    vscode.languages.registerDefinitionProvider('scss', {
+        async provideDefinition(document, position) {
+            const info = await getInfo('scss', document, position);
+            if (!info) return;
+            const {tsxEntity, tsxDocument} = info;
+            if (tsxEntity) {
+                const {start, end} = tsxEntity.pos.token;
+                const location: vscode.Location = {
+                    uri: vscode.Uri.file(tsxDocument.fileName),
+                    range: new vscode.Range(
+                        new vscode.Position(start.line, start.column),
+                        new vscode.Position(end.line, end.column),
+                    ),
+                };
+                return location;
+            }
+            return null;
+        },
+    });
+}
+
 function updateDoc(document: vscode.TextDocument, replaces: {text: string; range: Loc}[]) {
     const edit = new vscode.WorkspaceEdit();
     replaces.forEach(replace => {
@@ -36,28 +114,6 @@ async function codeAction(type: 'tsx' | 'scss', document: vscode.TextDocument, p
         ];
     }
 }
-vscode.languages.registerCodeActionsProvider('scss', {
-    provideCodeActions(document, range) {
-        return codeAction('scss', document, range.start);
-    },
-});
-
-vscode.languages.registerCodeActionsProvider('typescriptreact', {
-    provideCodeActions(document, range) {
-        return codeAction('tsx', document, range.start);
-    },
-});
-
-vscode.commands.registerCommand('frename', async (args: {data: Info}) => {
-    const p = args.data!;
-    const newName = await vscode.window.showInputBox({value: p.scssEntity!.name});
-    if (newName) {
-        const scssReplaces = p.plugin.scss.rename(p.scssEntity!, newName);
-        const tsxReplaces = p.plugin.tsx.rename(p.tsxEntity!, newName);
-        await updateDoc(p.scssDocument, scssReplaces);
-        await updateDoc(p.tsxDocument, tsxReplaces);
-    }
-});
 
 type ReturnTypeNoPromise<T> = T extends (...args: any[]) => Promise<infer R> ? R : any;
 export type Info = ReturnTypeNoPromise<typeof getInfo>;
@@ -100,60 +156,9 @@ async function getInfo(type: 'tsx' | 'scss', document: vscode.TextDocument, posi
     };
 }
 
-vscode.languages.registerDefinitionProvider('typescriptreact', {
-    async provideDefinition(document, position) {
-        const info = await getInfo('tsx', document, position);
-        if (!info) return;
-        const {scssEntity, tsxEntity: _tsxEntity, scssDocument} = info;
-        const tsxEntity = _tsxEntity!;
-        if (scssEntity) {
-            const {start, end} = scssEntity.pos.token;
-            const location: vscode.Location = {
-                uri: vscode.Uri.file(scssDocument.fileName),
-                range: new vscode.Range(
-                    new vscode.Position(start.line, start.column),
-                    new vscode.Position(end.line, end.column),
-                ),
-            };
-            return location;
-        } else if (tsxEntity!.kind !== 'element' || !info.plugin.shouldSkipTagName(tsxEntity.name)) {
-            const newSCSSContent = info.plugin.scss.insert(tsxEntity);
-            updateDoc(scssDocument, newSCSSContent);
-        }
-        return null;
-    },
-});
-
-vscode.languages.registerDefinitionProvider('scss', {
-    async provideDefinition(document, position) {
-        const info = await getInfo('scss', document, position);
-        if (!info) return;
-        const {tsxEntity, tsxDocument} = info;
-        if (tsxEntity) {
-            const {start, end} = tsxEntity.pos.token;
-            const location: vscode.Location = {
-                uri: vscode.Uri.file(tsxDocument.fileName),
-                range: new vscode.Range(
-                    new vscode.Position(start.line, start.column),
-                    new vscode.Position(end.line, end.column),
-                ),
-            };
-            return location;
-        }
-        return null;
-    },
-});
-
 function toPosition(loc: {line: number; column: number}) {
     return new vscode.Position(loc.line, loc.column);
 }
-const scssDiagnostics = vscode.languages.createDiagnosticCollection('scss');
-vscode.workspace.onDidChangeTextDocument(event => {
-    checkUnusedSCSSItems(event.document);
-});
-vscode.workspace.onDidOpenTextDocument(event => {
-    checkUnusedSCSSItems(event);
-});
 
 async function checkUnusedSCSSItems(doc: vscode.TextDocument) {
     const type = doc.fileName.endsWith('tsx') ? 'tsx' : doc.fileName.endsWith('scss') ? 'scss' : undefined;

@@ -2,7 +2,7 @@
 	"name": "reactobem",
 	"displayName": "reactobem",
 	"description": "",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"publisher": "cevek",
 	"engines": {
 		"vscode": "^1.31.0"
@@ -11,7 +11,6 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extension.helloWorld",
 		"onLanguage:scss",
 		"onLanguage:typescriptreact"
 	],
