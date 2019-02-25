@@ -183,7 +183,7 @@ export function plugin(tsxFileName: string, tsxContent: string, scssContent: str
     ): {pos: 'before' | 'after'; item: T} | undefined {
         const idx = parentItems.findIndex(item => item.name === itemName);
         if (idx === -1) {
-            console.log(parentItems);
+            // console.log(parentItems);
             throw new Error('Item not found: ' + itemName);
         }
         for (let i = 0; i < parentItems.length; i++) {

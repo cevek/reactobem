@@ -1,6 +1,5 @@
 import {Element, Component, Mod, Loc, MainComponent} from './types';
 import {getMainComponentName} from '../common';
-import {element} from 'prop-types';
 const gonzales = require('gonzales-pe');
 
 interface StyleNode {
