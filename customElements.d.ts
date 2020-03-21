@@ -1,9 +1,5 @@
 declare namespace JSX {
     export interface IntrinsicElements {
-        [other: string]: React.DetailedHTMLProps<CustomHTMLAttributes, HTMLElement> | React.SVGProps<SVGElement>;
+        [other: string]: any;
     }
-}
-
-interface CustomHTMLAttributes extends React.AllHTMLAttributes<HTMLElement> {
-    as?: string;
 }

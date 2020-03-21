@@ -1,8 +1,9 @@
 {
     "name": "reactobem",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "description": "Add to your react components BEM classnames",
     "main": "dist/index.js",
+    "typings": "customElements.d.ts",
     "scripts": {
         "test": "npx ttsc && node dist/tests/test",
         "build": "npx tsc",
@@ -39,6 +40,7 @@
         "typescript": ">3.0.0"
     },
     "devDependencies": {
+        "vscode": "^1.1.36",
         "react": "^16.7.0",
         "ttypescript": "^1.5.6"
     }
